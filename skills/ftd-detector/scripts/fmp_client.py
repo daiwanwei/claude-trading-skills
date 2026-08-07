@@ -141,6 +141,9 @@ class FMPClient:
         self.retry_count = 0
         self.max_retries = 1
         self.api_calls_made = 0
+        # Set once a comma-separated quote request comes back empty, so the
+        # remaining batches skip straight to per-symbol requests.
+        self._batch_quotes_unsupported = False
         # Circuit breaker: track consecutive failures per endpoint URL prefix
         self._endpoint_failures: dict[str, int] = {}
         self._disabled_endpoints: set[str] = set()
@@ -322,16 +325,30 @@ class FMPClient:
         return data
 
     def get_batch_quotes(self, symbols: list[str]) -> dict[str, dict]:
-        """Fetch quotes for a list of symbols, batching up to 5 per request"""
+        """Fetch quotes for a list of symbols, batching up to 5 per request.
+
+        Plans without batch-quote access answer a comma-separated
+        /stable/quote request with an empty HTTP 200 (and /api/v3/quote 403s
+        for post-2025-08-31 keys), which would silently drop the whole batch.
+        Fall back to per-symbol requests, and stop probing batches once the
+        first one comes back empty so the remaining calls aren't wasted.
+        """
         results = {}
         batch_size = 5
         for i in range(0, len(symbols), batch_size):
             batch = symbols[i : i + batch_size]
-            batch_str = ",".join(batch)
-            quotes = self.get_quote(batch_str)
-            if quotes:
-                for q in quotes:
-                    results[q["symbol"]] = q
+            if len(batch) > 1 and not self._batch_quotes_unsupported:
+                quotes = self.get_quote(",".join(batch))
+                if quotes:
+                    for q in quotes:
+                        results[q["symbol"]] = q
+                    continue
+                self._batch_quotes_unsupported = True
+            for symbol in batch:
+                quotes = self.get_quote(symbol)
+                if quotes:
+                    for q in quotes:
+                        results[q["symbol"]] = q
         return results
 
     def get_batch_historical(self, symbols: list[str], days: int = 50) -> dict[str, list[dict]]:
