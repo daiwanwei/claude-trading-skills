@@ -1,0 +1,31 @@
+# Copy this file to daily-trading-routine.local.toml and uncomment a real or
+# explicitly hypothetical account size. The local file is ignored by Git.
+# account_size = 100000.0
+
+risk_pct_per_trade = 0.5
+max_portfolio_heat_pct = 6.0
+state_dir = "state/theses"
+output_dir = "reports/daily-trading-routine"
+max_market_data_age_days = 4
+
+# Optional regime input. Costs ~10 FMP calls per run and never gates the day:
+# a failure is recorded as a warning, not a stop.
+enable_macro_regime = false
+
+enable_theme = true
+enable_momentum_burst = false
+enable_exhaustion_hammer = false
+enable_canslim = false
+
+[timeouts]
+market_breadth = 120
+uptrend = 120
+market_top = 240
+macro_regime = 240
+exposure = 120
+circuit_breaker = 120
+vcp = 420
+theme = 240
+momentum_burst = 420
+exhaustion_hammer = 420
+canslim = 420
