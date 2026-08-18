@@ -61,3 +61,20 @@ def test_discover_skill_dirs_sorts_skills_with_skill_md(tmp_path: Path) -> None:
     (skills_dir / "not-a-skill").mkdir()
 
     assert [path.name for path in discover_skill_dirs(skills_dir)] == ["a-skill", "z-skill"]
+
+
+def test_private_provider_dir_is_excluded_from_archives() -> None:
+    """Private provider code must never enter a committed .skill archive.
+
+    scripts/package_skills.py walks the filesystem and does NOT consult
+    .gitignore, so gitignoring _private/ is not enough on its own.
+    """
+    assert not should_include(Path("scripts/providers/_private/galaxyark/owl5.py"))
+    assert not should_include(Path("scripts/providers/_private/tw_adapter.py"))
+    assert not should_include(Path("scripts/providers/_private"))
+
+
+def test_ordinary_provider_files_still_included() -> None:
+    assert should_include(Path("scripts/providers/__init__.py"))
+    assert should_include(Path("scripts/providers/us_fmp.py"))
+    assert should_include(Path("SKILL.md"))

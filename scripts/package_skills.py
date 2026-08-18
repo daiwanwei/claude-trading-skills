@@ -18,7 +18,12 @@ DEFAULT_SKILLS_DIR = PROJECT_ROOT / "skills"
 DEFAULT_OUTPUT_DIR = PROJECT_ROOT / "skill-packages"
 FIXED_ZIP_DATE = (2026, 1, 1, 0, 0, 0)
 
-EXCLUDED_DIR_NAMES = {"tests", "__pycache__", ".pytest_cache"}
+# "_private" holds provider code for a data source whose upstream crate is
+# marked PRIVATE — DO NOT DISTRIBUTE. This repo is a PUBLIC fork, and
+# iter_package_files() walks the filesystem without consulting .gitignore,
+# so this entry is the only thing keeping that code out of committed
+# .skill archives. Do not remove it.
+EXCLUDED_DIR_NAMES = {"tests", "__pycache__", ".pytest_cache", "_private"}
 EXCLUDED_FILE_NAMES = {".DS_Store"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo"}
 
