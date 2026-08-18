@@ -65,3 +65,11 @@ htmlcov/
 skills/*/scripts/providers/_private/
 docs/superpowers/specs/*-galaxyark-*.md
 docs/superpowers/plans/*-galaxyark-*.md
+
+# superpowers sdd working directory: holds full plan/task-brief artifacts for
+# in-flight work, including the galaxyark port (hostnames, table IDs, source
+# in plain text). Previously protected only by .superpowers/sdd/.gitignore
+# ("*"), an untracked file that ignores itself — if that file were ever
+# lost, the private material would become stageable. Ignore the whole
+# directory here as a second, committed line of defense.
+.superpowers/
