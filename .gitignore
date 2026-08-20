@@ -20,6 +20,9 @@ env/
 .vscode/
 .claude/
 .envrc
+.env
+.env.*
+!.env.example
 .mcp.json
 config/daily-trading-routine.local.toml
 
