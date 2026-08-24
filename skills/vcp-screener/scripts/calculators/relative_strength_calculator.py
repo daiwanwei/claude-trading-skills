@@ -23,6 +23,8 @@ Scoring:
 - 0:   < -20% (laggard)
 """
 
+from typing import Optional
+
 # Minervini weighting periods (trading days) and weights
 RS_PERIODS = [
     (63, 0.40),  # 3 months - 40%
@@ -35,6 +37,7 @@ RS_PERIODS = [
 def calculate_relative_strength(
     stock_prices: list[dict],
     sp500_prices: list[dict],
+    rs_periods: Optional[list] = None,
 ) -> dict:
     """
     Calculate Minervini-weighted relative strength vs S&P 500.
@@ -42,6 +45,9 @@ def calculate_relative_strength(
     Args:
         stock_prices: Daily OHLCV for stock (most recent first), need 252+ days
         sp500_prices: Daily OHLCV for SPY (most recent first), need 252+ days
+        rs_periods: Optional list of (period_bars, weight) tuples overriding
+            RS_PERIODS (e.g. calendar-day spans for a 24/7 market). None uses
+            RS_PERIODS.
 
     Returns:
         Dict with score (0-100), rs_rank_estimate, weighted_rs, period details
@@ -62,6 +68,8 @@ def calculate_relative_strength(
             "error": "Insufficient S&P 500 price data (need 63+ days)",
         }
 
+    periods = rs_periods if rs_periods else RS_PERIODS
+
     stock_closes = [d.get("close", d.get("adjClose", 0)) for d in stock_prices]
     sp500_closes = [d.get("close", d.get("adjClose", 0)) for d in sp500_prices]
 
@@ -69,7 +77,7 @@ def calculate_relative_strength(
     total_weight = 0.0
     period_details = []
 
-    for period_days, weight in RS_PERIODS:
+    for period_days, weight in periods:
         if len(stock_closes) > period_days and len(sp500_closes) > period_days:
             stock_return = _period_return(stock_closes, period_days)
             sp500_return = _period_return(sp500_closes, period_days)

@@ -320,6 +320,15 @@ def analyze_stock(
     breakout_volume_ratio: float = 1.5,
     max_sma200_extension: float = 50.0,
     wide_and_loose_threshold: float = 15.0,
+    right_shoulder_pct: float = 5.0,
+    t1_depth_max: float = 35.0,
+    pattern_duration_min: int = 15,
+    pattern_duration_max: int = 325,
+    wide_and_loose_max_duration: int = 10,
+    min_pct_above_52w_low: float = 25.0,
+    max_pct_below_52w_high: float = 25.0,
+    min_rs_rank: int = 70,
+    rs_periods: Optional[list] = None,
     as_of_offset: int = 0,
 ) -> Optional[dict]:
     """
@@ -348,7 +357,7 @@ def analyze_stock(
     market_cap = quote.get("marketCap", 0)
 
     # 1. Relative Strength (needed for Trend Template criterion 7)
-    rs_result = calculate_relative_strength(historical, sp500_history)
+    rs_result = calculate_relative_strength(historical, sp500_history, rs_periods=rs_periods)
     rs_rank = rs_result.get("rs_rank_estimate", 0)
 
     # 2. Trend Template
@@ -358,6 +367,9 @@ def analyze_stock(
         rs_rank=rs_rank,
         ext_threshold=ext_threshold,
         max_sma200_extension=max_sma200_extension,
+        min_pct_above_52w_low=min_pct_above_52w_low,
+        max_pct_below_52w_high=max_pct_below_52w_high,
+        min_rs_rank=min_rs_rank,
     )
 
     # 3. VCP Pattern Detection
@@ -370,6 +382,11 @@ def analyze_stock(
         t1_depth_min=t1_depth_min,
         contraction_ratio=contraction_ratio,
         wide_and_loose_threshold=wide_and_loose_threshold,
+        right_shoulder_pct=right_shoulder_pct,
+        t1_depth_max=t1_depth_max,
+        pattern_duration_min=pattern_duration_min,
+        pattern_duration_max=pattern_duration_max,
+        wide_and_loose_max_duration=wide_and_loose_max_duration,
     )
 
     # 4. Volume Pattern
