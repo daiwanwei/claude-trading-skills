@@ -34,7 +34,23 @@ produced at least one contraction but failed VCP validation, spaced at least
 `control_min_spacing` (60) bars apart so overlapping forward windows don't
 inflate the count.
 
-**Per-candidate results**, sorted by treatment n ascending (all figures
+**What actually determines the outcome.** Median `days_to_outcome` is **1**
+in both arms — independently re-confirmed by re-scanning `equity-baseline`
+and `crypto-moderate` directly from cached records (median exactly 1.0 in
+all four: treatment and control, both candidates). And a large share of
+samples in both arms are already outside the `[stop, pivot]` band — i.e.
+already past the pivot or already past the stop — on the detection day
+itself, before the forward window opens at all: 53.4-80.0% of treatment
+records and 48.4-60.4% of control records across the eight candidates (see
+the band-geometry table below). With outcomes resolving this fast and this
+much of the sample already pre-decided at detection, a large share of what
+the raw treatment/control gap below measures is which side of the band a
+sample already sat on, not what happened afterward. The inside-band
+comparison two sections down restricts to samples still inside the band at
+detection, to isolate the part of the gap that structure quality can
+plausibly explain.
+
+**Per-candidate results (raw)**, sorted by treatment n ascending (all figures
 verified against the JSON artifact):
 
 | Candidate | Treatment n | Treatment breakout rate | Control n | Control breakout rate | Gap (pp) | Usable (n≥30) |
@@ -48,7 +64,99 @@ verified against the JSON artifact):
 | crypto-loose | 240 | 59.58% | 1295 | 29.58% | 30.01 | yes |
 | crypto-looser | 310 | 55.16% | 1374 | 29.04% | 26.12 | yes |
 
-Median max-gain / max-loss by arm (percent, relative to detection-day close):
+**Band geometry**, per candidate — where the detection-day close sat inside
+`[stop, pivot]` (0 = at the stop, 1 = at the pivot; `pre-resolved` = already
+outside `[0,1]`, i.e. past the pivot or past the stop before the forward
+window opened):
+
+| Candidate | T median band position | T pre-resolved | C median band position | C pre-resolved |
+|---|---:|---:|---:|---:|
+| crypto-three-contractions | 1.066 | 57.1% | 0.129 | 56.6% |
+| equity-baseline | 1.169 | 80.0% | 0.023 | 60.4% |
+| crypto-long-base | 0.740 | 55.4% | 0.229 | 48.4% |
+| crypto-tight | 0.855 | 68.4% | 0.208 | 50.9% |
+| crypto-deep-t1 | 0.687 | 53.4% | 0.115 | 55.4% |
+| crypto-moderate | 0.698 | 58.0% | 0.180 | 52.6% |
+| crypto-loose | 0.675 | 56.8% | 0.110 | 55.5% |
+| crypto-looser | 0.630 | 54.8% | 0.125 | 53.4% |
+
+A treatment median band position above 1.0 (`equity-baseline`,
+`crypto-three-contractions`) means the *median* treatment detection already
+sat above its own pivot — over half of those "detections" were already past
+the trigger the outcome rule scores against.
+
+**Per-candidate results (inside-band)** — the same comparison restricted to
+records with `pre_resolved is False` (still inside `[stop, pivot]` at
+detection), sorted by **inside-band gap descending** — deliberately not by
+treatment n, to make the reordering visible:
+
+| Candidate | Raw gap (pp) | IB Treatment n | IB Treatment rate | IB Control n | IB Control rate | IB gap (pp) | IB usable (n≥30) |
+|---|---:|---:|---:|---:|---:|---:|:---:|
+| crypto-looser | 26.12 | 132 | 55.30% | 604 | 30.96% | **24.34** | yes |
+| crypto-long-base | 30.34 | 29 | 55.17% | 442 | 32.58% | 22.59 | **no** |
+| crypto-moderate | 30.58 | 87 | 56.32% | 617 | 34.20% | 22.12 | yes |
+| crypto-deep-t1 | 32.94 | 75 | 54.67% | 546 | 32.78% | 21.88 | yes |
+| crypto-tight | 29.80 | 43 | 55.81% | 623 | 36.44% | 19.38 | yes |
+| crypto-loose | 30.01 | 98 | 52.04% | 542 | 32.84% | 19.20 | yes |
+| equity-baseline | 39.92 | 10 | 50.00% | 503 | 35.79% | 14.21 | **no** |
+| crypto-three-contractions | 41.05 | 3 | 33.33% | 537 | 32.59% | 0.74 | **no** |
+
+**The ranking inverts once the confound is removed.** `crypto-looser` has
+the *smallest* raw gap (26.12 pp, last of 8) and the *largest* inside-band
+gap (24.34 pp, first of 8). `equity-baseline` has the *largest* raw gap
+(39.92 pp, first among raw-usable candidates) and falls to 14.21 pp
+inside-band — second-to-last, and below the n≥30 gate at IB n=10. The raw
+ordering was substantially an ordering of contamination: stricter,
+later-triggering candidates (larger `t1_depth_min`, higher `atr_multiplier`,
+tighter `contraction_ratio`) detect later in the move, so more of their
+treatment samples are already resolved by detection time — which is exactly
+what the band-geometry table shows (`equity-baseline`'s treatment
+pre-resolved share, 80.0%, is the highest of any candidate; its control
+pre-resolved share, 60.4%, is also the highest). A reader who ranked
+candidates by the raw gap alone would have ranked them close to backwards.
+
+**A real effect survives, and it is flatter than the raw numbers
+suggested.** Five of eight candidates clear the n≥30 gate inside-band
+(`crypto-deep-t1`, `crypto-moderate`, `crypto-loose`, `crypto-tight`,
+`crypto-looser`), and their inside-band gaps cluster tightly at
+**19.20-24.34 pp** — versus a raw gap spread of **26.12-39.92 pp** across the
+seven candidates usable on the raw gate (a 13.80 pp spread raw vs. a 5.14 pp
+spread inside-band, computed over an overlapping but not identical set of
+candidates: two of the seven raw-usable candidates, `equity-baseline` and
+`crypto-long-base`, drop out on the stricter inside-band gate;
+`crypto-three-contractions` was never raw-usable to begin with and fails
+both gates). This is not a negative result: a smaller, tighter effect that barely moves
+across five different parameter candidates is a *more* credible shape for a
+real effect than a large, widely-scattered raw gap driven by which candidate
+happened to detect earliest relative to its own pivot. Say plainly what this
+supports: contraction-quality structure predicts *something* — a
+19-24 percentage-point inside-band breakout-rate edge, on 442-623 inside-band
+control observations per candidate (2,932 combined across the five, though
+they draw on overlapping symbol history and are not independent of each
+other) and five independently-parameterized candidates that land in the same
+narrow band — even after removing the part of the raw gap that barrier
+geometry alone explains. It does not support the raw gap's larger magnitude,
+and it does not support treating any one candidate's inside-band number as
+more precise than the others given they cluster this tightly.
+
+**Withdrawn: the "least crypto-tuned parameter set" argument for
+`equity-baseline`.** An earlier version of this document argued that
+`equity-baseline` — the unmodified equity threshold set, carrying none of
+the crypto-specific widening in `crypto_profile.py` — showed the largest
+raw gap among usable candidates, and that the strongest result coming from
+the parameter set least tuned to crypto argued against the discrimination
+being an artifact of crypto-specific calibration choices. That argument is
+withdrawn, not softened: it was tested by cleaning the confound out, and it
+failed the test. `equity-baseline` was the *most* contaminated candidate
+(80.0% treatment pre-resolved share, the highest of all eight — see the
+band-geometry table), its raw gap collapses from 39.92 pp to 14.21 pp
+inside-band, and its inside-band n (10) falls below the sample-size gate. A
+reader who saw the earlier claim deserves to know it was tested against this
+recalibration and did not survive.
+
+Median max-gain / max-loss by arm (percent, relative to detection-day
+close; unchanged from the raw-only version of this document — the
+instrumentation added here does not touch these figures):
 
 | Candidate | T med gain | C med gain | T med loss | C med loss |
 |---|---:|---:|---:|---:|
@@ -80,16 +188,26 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
   this to roughly 189x (1320/7). Control arms land in a narrow band
   (911-1382) because they are drawn from the same underlying contraction
   days regardless of which treatment filter is applied; treatment arm size
-  is what the candidate's strictness controls.
+  is what the candidate's strictness controls. Restricting to the inside-band
+  subset shrinks every arm further and unevenly — treatment n drops to
+  3-132, control n to 442-623 — which is why the inside-band gate (below) is
+  the stricter of the two: two candidates (`equity-baseline`,
+  `crypto-long-base`) clear the raw n≥30 gate but fail it.
 - **The structure, not any single gap, is the informative part of this
   result:**
   - The control breakout rate is stable at roughly 0.29-0.35 across **all
     eight** candidates (0.2904 to 0.3459) even though each candidate's
-    treatment filter is different. That is what a genuine baseline should
-    look like — a rate set by the market and the outcome rule, not by which
-    treatment filter happened to be swept — rather than an artifact tied to
-    one parameter set.
-  - Treatment n and breakout rate move monotonically across
+    treatment filter is different. That stability is consistent with a
+    genuine baseline set by the market and the outcome rule — but it is
+    equally consistent with the control arm being dominated by barrier
+    geometry that itself barely moves across candidates: the band-geometry
+    table above shows control median band position sitting in a narrow
+    0.023-0.229 range throughout, regardless of which treatment filter was
+    swept. The observation (control rate is stable) stands; the inference
+    drawn from it previously (that stability alone marks it as a genuine,
+    non-artifactual baseline) does not follow without knowing which of the
+    two explanations, or what mix of both, is responsible.
+  - Treatment n and raw breakout rate move monotonically across
     crypto-tight → crypto-moderate → crypto-loose → crypto-looser
     (n: 146 → 224 → 240 → 310; breakout rate: 64.38% → 62.05% → 59.58% →
     55.16%), and `contraction_ratio` does progress cleanly across that same
@@ -105,20 +223,11 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
     about these four hand-tuned, multi-parameter configurations; it cannot
     be attributed to `contraction_ratio`, or to any single threshold, and
     should not be read as evidence for what a controlled sweep of that one
-    parameter would show. The other three crypto candidates (deep-t1,
-    long-base, three-contractions), which tighten along still other axes
-    (T1 depth, base duration, contraction count), and equity-baseline,
-    which uses an unrelated equity-tuned parameter set, are directionally
-    consistent with the same pattern but do not extend it into one single
-    monotone ranking — e.g. crypto-tight's rate (64.38%) is slightly higher
-    than crypto-long-base's (63.38%) despite crypto-long-base having a
-    smaller n. All seven usable candidates show a positive gap, ranging
-    from 26.12 pp (crypto-looser) to 39.92 pp (equity-baseline); given the
-    document's own no-significance-test position two paragraphs above, that
-    is reported as a plain fact, not as evidence that seven positive gaps
-    are collectively less likely under chance than one gap alone — the
-    candidates share 46 overlapping symbols and, per the point just made,
-    are not independent single-axis variants either.
+    parameter would show. It is also a **raw-only** pattern: the same four
+    candidates' inside-band treatment breakout rates do not move
+    monotonically (55.81% → 56.32% → 52.04% → 55.30% across
+    tight/moderate/loose/looser) — another instance of the raw figures
+    ordering candidates in a way the cleaned figures do not preserve.
   - Treatment's median max **loss** is smaller in magnitude than control's
     in every one of the 8 candidates (e.g. equity-baseline -9.59% vs
     -18.48%; crypto-deep-t1 -16.11% vs -18.12%). Treatment's median max
@@ -126,14 +235,13 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
     (crypto-long-base, where treatment gain is marginally *below* control)
     to +6.27 pp (crypto-deep-t1). The discrimination this calibration finds
     lives mostly in a smaller median close-based drawdown excursion and in
-    pivot resolution, not in upside magnitude.
-  - `equity-baseline` — the unmodified equity threshold set, carrying none
-    of the crypto-specific widening in `crypto_profile.py` — shows the
-    **largest gap among usable candidates** (39.92 pp). That the strongest
-    result comes from the parameter set least tuned to crypto argues against
-    the discrimination being an artifact of crypto-specific calibration
-    choices, though its n=52 is the second-smallest usable sample and its
-    ratio of history is also the shortest surviving equity-style filtering.
+    pivot resolution, not in upside magnitude. (These gain/loss figures
+    predate the band-geometry instrumentation and are not split by
+    inside/outside band; a candidate whose treatment median is already
+    pulled up near or past its pivot has structurally less remaining room to
+    register as a large gain, so this discrimination likely shares some of
+    the same barrier-geometry confound as the breakout-rate gap. Not
+    re-measured here — flagged as a follow-up, not corrected in this pass.)
 
 ## What is NOT established
 
@@ -145,14 +253,23 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
   of a statistically distinguishable effect.
 - **Which single parameter set is the "true" edge**, isolated from the bias
   of having swept eight candidates against the same data and picking
-  whichever looked best. The monotone trend in treatment n and breakout
+  whichever looked best. The monotone trend in treatment n and raw breakout
   rate across crypto-tight/moderate/loose/looser is suggestive structure,
   not a validated threshold — and, per the note above, those four
   candidates vary `t1_depth_min`, `atr_multiplier`, and `lookback_days`
   simultaneously with `contraction_ratio`, so the trend cannot be
-  attributed to `contraction_ratio` specifically. `crypto_profile.py`'s
+  attributed to `contraction_ratio` specifically, and it does not survive
+  into the inside-band breakout rate either. `crypto_profile.py`'s
   candidates remain hypotheses, not settings production code should assume
   are optimal.
+- **The raw gap's magnitude**, for any candidate. The inside-band comparison
+  above shows a large share of the raw gap is explained by where the
+  detection-day close sat relative to the pivot and stop, not by contraction
+  quality. The inside-band gap (19.20-24.34 pp across the five candidates
+  that clear its stricter n≥30 gate) is the better-supported figure for
+  "how much does structure quality predict outcomes" — but it is still a
+  raw, undiscounted measurement, not a significance-tested one; see the
+  first bullet above.
 - Any win rate, expectancy, or risk-adjusted return figure. `breakout_rate`
   is a pivot-resolution rate under the outcome rule described above, not a
   P&L outcome; it says nothing about position sizing, slippage, fees, partial
@@ -219,6 +336,15 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
   document previously attributed the treatment/control size imbalance solely
   to filter strictness; that remains the dominant driver, but it is not the
   only asymmetry between the two arms.
+- **Inside-band filtering trades contamination for sample size.** Removing
+  pre-resolved records cleans the barrier-geometry confound out of the gap,
+  but it also removes 53.4-80.0% of every candidate's treatment arm (see the
+  band-geometry table), which is why `equity-baseline` and `crypto-long-base`
+  clear the raw n≥30 gate but not the inside-band one. A larger universe or a
+  longer history is the only way to grow the inside-band n for a candidate
+  without loosening the filter that makes it inside-band in the first place;
+  a future recalibration with more symbols would need to re-check every
+  candidate's inside-band n, not just the two that failed it this run.
 
 ## Gate decision (Task 13, 2026-08-24)
 
@@ -228,33 +354,67 @@ on the best-looking one, and report gap sizes — a follow-up plan for
 `monitor_crypto_vcp.py` becomes justified. If no candidate reaches n ≥ 30,
 stop and do not build the monitor.
 
-**Result: the gate passes.** Seven of the eight candidates clear treatment
-n ≥ 30 (`usable: true` in the artifact): `equity-baseline` (n=52),
-`crypto-long-base` (n=71), `crypto-tight` (n=146), `crypto-deep-t1` (n=172),
-`crypto-moderate` (n=224), `crypto-loose` (n=240), `crypto-looser` (n=310).
-Only `crypto-three-contractions` fails the gate (n=7, `usable: false`) and
-yields no conclusion.
+**Two gates now apply, and they disagree on two candidates.** The raw
+gate (treatment n ≥ 30 on the unfiltered arm) is what the plan specified;
+the inside-band gate (treatment n ≥ 30 restricted to `pre_resolved is
+False`) was added by this recalibration once the barrier-geometry confound
+was found, because a candidate's raw n can clear 30 almost entirely on
+pre-resolved records that the confound explanation, not contraction
+quality, accounts for.
 
-Gap sizes among the seven usable candidates range from 26.12 pp
-(crypto-looser) to 39.92 pp (equity-baseline), all measured the same way
-(treatment breakout rate minus control breakout rate, no significance
-test). `equity-baseline`'s gap is the largest of the usable candidates; per
-the multiple-comparisons caveat above, that ranking is itself subject to
-selection bias from having swept eight candidates against the same 46-symbol
-history, and should not be read as proof that the unmodified equity
-threshold set is the best crypto candidate — only that it is not
-disqualified by this calibration.
+- **Raw gate: 7 of 8 pass.** `equity-baseline` (n=52), `crypto-long-base`
+  (n=71), `crypto-tight` (n=146), `crypto-deep-t1` (n=172), `crypto-moderate`
+  (n=224), `crypto-loose` (n=240), `crypto-looser` (n=310). Only
+  `crypto-three-contractions` fails (n=7).
+- **Inside-band gate: 5 of 8 pass.** `crypto-deep-t1` (IB n=75),
+  `crypto-moderate` (IB n=87), `crypto-loose` (IB n=98), `crypto-tight`
+  (IB n=43), `crypto-looser` (IB n=132). `equity-baseline` (IB n=10),
+  `crypto-long-base` (IB n=29), and `crypto-three-contractions` (IB n=3)
+  fail it — the first two despite passing the raw gate.
 
-This document records what was measured. It does not recommend which
-candidate, if any, a follow-up monitor plan should adopt; that decision
-belongs to the follow-up plan, informed by this evidence.
+**A follow-up monitor plan should use the inside-band gate**, not the raw
+one, as the sample-size criterion for which candidates are usable. The raw
+gate answers "does this candidate produce at least 30 valid-VCP days"; the
+inside-band gate answers "does this candidate produce at least 30 valid-VCP
+days whose forward outcome was not already substantially decided at
+detection" — the second question is the one a monitor plan actually needs
+answered, since a monitor watches for setups *before* they resolve, and the
+raw gate's extra candidates (`equity-baseline`, `crypto-long-base`) clear it
+almost entirely on records the inside-band analysis shows were already
+past their pivot or stop. Both gate results are recorded above so a reader
+can see exactly what changes and does not: the same five candidates that
+clear the inside-band gate also produced the tightest-clustering,
+least-parameter-sensitive gaps (19.20-24.34 pp) in the ranking-inversion
+discussion above — the two questions point the same direction.
+
+Gap sizes among the five inside-band-usable candidates range from 19.20 pp
+(crypto-loose) to 24.34 pp (crypto-looser), all measured the same way
+(treatment breakout rate minus control breakout rate, restricted to
+inside-band records, no significance test). Per the multiple-comparisons
+caveat above, even this narrower ranking is subject to selection bias from
+having swept eight candidates against the same 46-symbol history — it
+should not be read as proof that any one of the five is the best crypto
+candidate, only that all five are not disqualified by this calibration, and
+that `equity-baseline` and `crypto-long-base` now are (on the stricter,
+better-justified gate) despite clearing the raw one.
+
+This document records what was measured. It does not recommend which of
+the five inside-band-usable candidates, if any, a follow-up monitor plan
+should adopt; that finer-grained decision belongs to the follow-up plan,
+informed by this evidence.
 
 ## Required before any performance claim
 
-The calibration run's date, universe, per-candidate sample sizes, and the
-treatment/control gap are recorded above (run date 2026-08-24, universe
-frozen 2026-08-24, 46 symbols, 0 failed). `crypto-three-contractions` (n=7)
-remains below 30 signals and yields no conclusion. Still required before any
-win-rate, expectancy, or risk-adjusted return claim: an actual P&L backtest
-with position sizing, fees, and slippage — `breakout_rate` alone does not
-supply one (see "What is NOT established" above).
+The calibration run's date, universe, per-candidate sample sizes, and both
+the raw and inside-band treatment/control gaps are recorded above (run date
+2026-08-24, universe frozen 2026-08-24, 46 symbols, 0 failed).
+`crypto-three-contractions` (raw n=7) remains below 30 signals on either
+gate and yields no conclusion; `equity-baseline` (IB n=10) and
+`crypto-long-base` (IB n=29) clear the raw gate but not the inside-band one
+and should not be treated as validated by this calibration. Any performance
+claim should cite the inside-band gap for the five candidates that clear
+both gates, not the raw gap — see "The ranking inverts once the confound is
+removed" above for why. Still required before any win-rate, expectancy, or
+risk-adjusted return claim: an actual P&L backtest with position sizing,
+fees, and slippage — `breakout_rate` alone does not supply one, inside-band
+or otherwise (see "What is NOT established" above).

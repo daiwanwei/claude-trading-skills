@@ -1,5 +1,5 @@
 {
- "generated_at": "2026-08-24T12:13:35.377659+00:00",
+ "generated_at": "2026-08-24T13:53:28.026937+00:00",
  "universe_frozen_on": "2026-08-24",
  "symbols_scanned": [
   "AAVEUSDT",
@@ -125,6 +125,36 @@
    "breakout_rate_gap": 0.3294454382826476,
    "usable": true,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 0.6873695198329853,
+     "pre_resolved_share": 0.5337423312883436
+    },
+    "control": {
+     "median_band_position": 0.11532241359900922,
+     "pre_resolved_share": 0.553921568627451
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 75,
+     "breakout_rate": 0.5466666666666666,
+     "stop_rate": 0.4266666666666667,
+     "timeout_rate": 0.02666666666666667,
+     "median_max_gain_pct": 22.3955,
+     "median_max_loss_pct": -17.1158
+    },
+    "control": {
+     "n": 546,
+     "breakout_rate": 0.32783882783882784,
+     "stop_rate": 0.4542124542124542,
+     "timeout_rate": 0.21794871794871795,
+     "median_max_gain_pct": 16.90075,
+     "median_max_loss_pct": -18.784950000000002
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.2188278388278388,
+   "inside_band_usable": true,
    "failed_symbols": []
   },
   "crypto-long-base": {
@@ -147,6 +177,36 @@
    "breakout_rate_gap": 0.30339666981029983,
    "usable": true,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 0.7399386503067484,
+     "pre_resolved_share": 0.5538461538461539
+    },
+    "control": {
+     "median_band_position": 0.22933333333333328,
+     "pre_resolved_share": 0.4837587006960557
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 29,
+     "breakout_rate": 0.5517241379310345,
+     "stop_rate": 0.41379310344827586,
+     "timeout_rate": 0.034482758620689655,
+     "median_max_gain_pct": 16.7916,
+     "median_max_loss_pct": -11.2329
+    },
+    "control": {
+     "n": 442,
+     "breakout_rate": 0.3257918552036199,
+     "stop_rate": 0.4072398190045249,
+     "timeout_rate": 0.2669683257918552,
+     "median_max_gain_pct": 16.80505,
+     "median_max_loss_pct": -18.3537
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.22593228272741456,
+   "inside_band_usable": false,
    "failed_symbols": []
   },
   "crypto-loose": {
@@ -169,6 +229,36 @@
    "breakout_rate_gap": 0.30008043758043756,
    "usable": true,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 0.6750914175091415,
+     "pre_resolved_share": 0.5676855895196506
+    },
+    "control": {
+     "median_band_position": 0.10960869565217385,
+     "pre_resolved_share": 0.5553732567678425
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 98,
+     "breakout_rate": 0.5204081632653061,
+     "stop_rate": 0.45918367346938777,
+     "timeout_rate": 0.02040816326530612,
+     "median_max_gain_pct": 19.5087,
+     "median_max_loss_pct": -16.6174
+    },
+    "control": {
+     "n": 542,
+     "breakout_rate": 0.3284132841328413,
+     "stop_rate": 0.45387453874538747,
+     "timeout_rate": 0.2177121771217712,
+     "median_max_gain_pct": 16.72715,
+     "median_max_loss_pct": -19.02545
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.19199487913246482,
+   "inside_band_usable": true,
    "failed_symbols": []
   },
   "crypto-looser": {
@@ -191,6 +281,36 @@
    "breakout_rate_gap": 0.2612198901253698,
    "usable": true,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 0.6303451902849488,
+     "pre_resolved_share": 0.547945205479452
+    },
+    "control": {
+     "median_band_position": 0.12510869565217397,
+     "pre_resolved_share": 0.5338461538461539
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 132,
+     "breakout_rate": 0.553030303030303,
+     "stop_rate": 0.4015151515151515,
+     "timeout_rate": 0.045454545454545456,
+     "median_max_gain_pct": 16.90065,
+     "median_max_loss_pct": -17.51945
+    },
+    "control": {
+     "n": 604,
+     "breakout_rate": 0.30960264900662254,
+     "stop_rate": 0.4337748344370861,
+     "timeout_rate": 0.25662251655629137,
+     "median_max_gain_pct": 16.481450000000002,
+     "median_max_loss_pct": -20.800649999999997
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.24342765402368044,
+   "inside_band_usable": true,
    "failed_symbols": []
   },
   "crypto-moderate": {
@@ -213,6 +333,36 @@
    "breakout_rate_gap": 0.3057744986561919,
    "usable": true,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 0.6976744186046508,
+     "pre_resolved_share": 0.5797101449275363
+    },
+    "control": {
+     "median_band_position": 0.18,
+     "pre_resolved_share": 0.5257099002302379
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 87,
+     "breakout_rate": 0.5632183908045977,
+     "stop_rate": 0.40229885057471265,
+     "timeout_rate": 0.034482758620689655,
+     "median_max_gain_pct": 17.8628,
+     "median_max_loss_pct": -14.4912
+    },
+    "control": {
+     "n": 617,
+     "breakout_rate": 0.3419773095623987,
+     "stop_rate": 0.4246353322528363,
+     "timeout_rate": 0.233387358184765,
+     "median_max_gain_pct": 17.3079,
+     "median_max_loss_pct": -18.2924
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.221241081242199,
+   "inside_band_usable": true,
    "failed_symbols": []
   },
   "crypto-three-contractions": {
@@ -235,6 +385,36 @@
    "breakout_rate_gap": 0.41049783549783553,
    "usable": false,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 1.0655010924196846,
+     "pre_resolved_share": 0.5714285714285714
+    },
+    "control": {
+     "median_band_position": 0.12866666666666676,
+     "pre_resolved_share": 0.5657788539144472
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 3,
+     "breakout_rate": 0.3333333333333333,
+     "stop_rate": 0.6666666666666666,
+     "timeout_rate": 0.0,
+     "median_max_gain_pct": 15.7914,
+     "median_max_loss_pct": -17.1158
+    },
+    "control": {
+     "n": 537,
+     "breakout_rate": 0.3258845437616387,
+     "stop_rate": 0.4450651769087523,
+     "timeout_rate": 0.22905027932960895,
+     "median_max_gain_pct": 16.7783,
+     "median_max_loss_pct": -18.8
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.007448789571694592,
+   "inside_band_usable": false,
    "failed_symbols": []
   },
   "crypto-tight": {
@@ -257,6 +437,36 @@
    "breakout_rate_gap": 0.29796540994868065,
    "usable": true,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 0.8549935275080907,
+     "pre_resolved_share": 0.6838235294117647
+    },
+    "control": {
+     "median_band_position": 0.2083924349881797,
+     "pre_resolved_share": 0.5090337784760408
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 43,
+     "breakout_rate": 0.5581395348837209,
+     "stop_rate": 0.4418604651162791,
+     "timeout_rate": 0.0,
+     "median_max_gain_pct": 18.7946,
+     "median_max_loss_pct": -17.7184
+    },
+    "control": {
+     "n": 623,
+     "breakout_rate": 0.36436597110754415,
+     "stop_rate": 0.46709470304975925,
+     "timeout_rate": 0.16853932584269662,
+     "median_max_gain_pct": 16.7545,
+     "median_max_loss_pct": -18.236
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.19377356377617677,
+   "inside_band_usable": true,
    "failed_symbols": []
   },
   "equity-baseline": {
@@ -279,6 +489,36 @@
    "breakout_rate_gap": 0.3992296363430384,
    "usable": true,
    "min_samples": 30,
+   "band_geometry": {
+    "treatment": {
+     "median_band_position": 1.1687201216862233,
+     "pre_resolved_share": 0.8
+    },
+    "control": {
+     "median_band_position": 0.023333333333333383,
+     "pre_resolved_share": 0.6042486231313926
+    }
+   },
+   "inside_band": {
+    "treatment": {
+     "n": 10,
+     "breakout_rate": 0.5,
+     "stop_rate": 0.5,
+     "timeout_rate": 0.0,
+     "median_max_gain_pct": 19.543,
+     "median_max_loss_pct": -9.9123
+    },
+    "control": {
+     "n": 503,
+     "breakout_rate": 0.35785288270377735,
+     "stop_rate": 0.5149105367793241,
+     "timeout_rate": 0.1272365805168986,
+     "median_max_gain_pct": 15.311,
+     "median_max_loss_pct": -19.7312
+    }
+   },
+   "inside_band_breakout_rate_gap": 0.14214711729622265,
+   "inside_band_usable": false,
    "failed_symbols": []
   }
  },
