@@ -1,0 +1,306 @@
+{
+ "frozen_on": "2026-08-24",
+ "criteria": {
+  "quote_asset": "USDT",
+  "spot_only": true,
+  "min_bars": 1000,
+  "excluded_bases": [
+   "AEUR",
+   "BUSD",
+   "DAI",
+   "EUR",
+   "FDUSD",
+   "GBP",
+   "TUSD",
+   "USD1",
+   "USDC"
+  ],
+  "excluded_suffixes": [
+   "UP",
+   "DOWN",
+   "BULL",
+   "BEAR"
+  ],
+  "ranked_by": "24h quote volume",
+  "target_count": 45
+ },
+ "note": "Frozen deliberately. Re-deriving this list from live exchangeInfo would infer the historical universe from today's survivors. Delisted names are added manually; Binance still serves their klines.",
+ "symbols": [
+  "BTCUSDT",
+  "ETHUSDT",
+  "XRPUSDT",
+  "SOLUSDT",
+  "ZECUSDT",
+  "BNBUSDT",
+  "DOGEUSDT",
+  "SUIUSDT",
+  "NEARUSDT",
+  "AAVEUSDT",
+  "PEPEUSDT",
+  "UNIUSDT",
+  "LINKUSDT",
+  "ADAUSDT",
+  "WLDUSDT",
+  "TRXUSDT",
+  "XLMUSDT",
+  "AVAXUSDT",
+  "PAXGUSDT",
+  "LTCUSDT",
+  "DASHUSDT",
+  "PROMUSDT",
+  "HBARUSDT",
+  "PENDLEUSDT",
+  "FETUSDT",
+  "INJUSDT",
+  "BCHUSDT",
+  "APTUSDT",
+  "ZENUSDT",
+  "ICPUSDT",
+  "LDOUSDT",
+  "ARBUSDT",
+  "SHIBUSDT",
+  "CRVUSDT",
+  "DOTUSDT",
+  "STXUSDT",
+  "FILUSDT",
+  "JSTUSDT",
+  "ETCUSDT",
+  "STORJUSDT",
+  "ONGUSDT",
+  "OPUSDT",
+  "ORDIUSDT",
+  "DGBUSDT",
+  "FLOKIUSDT",
+  "MATICUSDT"
+ ],
+ "delisted_manually_added": [
+  "MATICUSDT"
+ ],
+ "selection_detail": [
+  {
+   "symbol": "BTCUSDT",
+   "quote_volume_24h": 1288252638.9975977,
+   "first_bar": 1502928000000
+  },
+  {
+   "symbol": "ETHUSDT",
+   "quote_volume_24h": 931166153.113277,
+   "first_bar": 1502928000000
+  },
+  {
+   "symbol": "XRPUSDT",
+   "quote_volume_24h": 378510971.13234,
+   "first_bar": 1525392000000
+  },
+  {
+   "symbol": "SOLUSDT",
+   "quote_volume_24h": 296597646.29668,
+   "first_bar": 1597104000000
+  },
+  {
+   "symbol": "ZECUSDT",
+   "quote_volume_24h": 254025278.35263,
+   "first_bar": 1553126400000
+  },
+  {
+   "symbol": "BNBUSDT",
+   "quote_volume_24h": 95193572.78848,
+   "first_bar": 1509926400000
+  },
+  {
+   "symbol": "DOGEUSDT",
+   "quote_volume_24h": 87982461.68552,
+   "first_bar": 1562284800000
+  },
+  {
+   "symbol": "SUIUSDT",
+   "quote_volume_24h": 83256544.73021,
+   "first_bar": 1683072000000
+  },
+  {
+   "symbol": "NEARUSDT",
+   "quote_volume_24h": 67693985.6571,
+   "first_bar": 1602633600000
+  },
+  {
+   "symbol": "AAVEUSDT",
+   "quote_volume_24h": 63091989.89297,
+   "first_bar": 1602720000000
+  },
+  {
+   "symbol": "PEPEUSDT",
+   "quote_volume_24h": 51595443.48929279,
+   "first_bar": 1683244800000
+  },
+  {
+   "symbol": "UNIUSDT",
+   "quote_volume_24h": 51072541.64537,
+   "first_bar": 1600300800000
+  },
+  {
+   "symbol": "LINKUSDT",
+   "quote_volume_24h": 41776953.59426,
+   "first_bar": 1547596800000
+  },
+  {
+   "symbol": "ADAUSDT",
+   "quote_volume_24h": 37138200.3438,
+   "first_bar": 1523923200000
+  },
+  {
+   "symbol": "WLDUSDT",
+   "quote_volume_24h": 28914603.89565,
+   "first_bar": 1690156800000
+  },
+  {
+   "symbol": "TRXUSDT",
+   "quote_volume_24h": 28126180.12527,
+   "first_bar": 1528675200000
+  },
+  {
+   "symbol": "XLMUSDT",
+   "quote_volume_24h": 26720627.8105,
+   "first_bar": 1527724800000
+  },
+  {
+   "symbol": "AVAXUSDT",
+   "quote_volume_24h": 19646191.63077,
+   "first_bar": 1600732800000
+  },
+  {
+   "symbol": "PAXGUSDT",
+   "quote_volume_24h": 19370040.508889,
+   "first_bar": 1598572800000
+  },
+  {
+   "symbol": "LTCUSDT",
+   "quote_volume_24h": 18219830.40601,
+   "first_bar": 1513123200000
+  },
+  {
+   "symbol": "DASHUSDT",
+   "quote_volume_24h": 17319514.63388,
+   "first_bar": 1553731200000
+  },
+  {
+   "symbol": "PROMUSDT",
+   "quote_volume_24h": 14923924.95438,
+   "first_bar": 1679011200000
+  },
+  {
+   "symbol": "HBARUSDT",
+   "quote_volume_24h": 12814276.96265,
+   "first_bar": 1569715200000
+  },
+  {
+   "symbol": "PENDLEUSDT",
+   "quote_volume_24h": 12288995.138,
+   "first_bar": 1688342400000
+  },
+  {
+   "symbol": "FETUSDT",
+   "quote_volume_24h": 12257129.51205,
+   "first_bar": 1551312000000
+  },
+  {
+   "symbol": "INJUSDT",
+   "quote_volume_24h": 11020010.768,
+   "first_bar": 1603238400000
+  },
+  {
+   "symbol": "BCHUSDT",
+   "quote_volume_24h": 10587302.9952,
+   "first_bar": 1574899200000
+  },
+  {
+   "symbol": "APTUSDT",
+   "quote_volume_24h": 8725046.76934,
+   "first_bar": 1666137600000
+  },
+  {
+   "symbol": "ZENUSDT",
+   "quote_volume_24h": 7225069.69447,
+   "first_bar": 1593993600000
+  },
+  {
+   "symbol": "ICPUSDT",
+   "quote_volume_24h": 7141217.79819,
+   "first_bar": 1620691200000
+  },
+  {
+   "symbol": "LDOUSDT",
+   "quote_volume_24h": 7114957.60055,
+   "first_bar": 1652054400000
+  },
+  {
+   "symbol": "ARBUSDT",
+   "quote_volume_24h": 7074844.01876,
+   "first_bar": 1679529600000
+  },
+  {
+   "symbol": "SHIBUSDT",
+   "quote_volume_24h": 6815568.28332166,
+   "first_bar": 1620604800000
+  },
+  {
+   "symbol": "CRVUSDT",
+   "quote_volume_24h": 6470383.50432,
+   "first_bar": 1597449600000
+  },
+  {
+   "symbol": "DOTUSDT",
+   "quote_volume_24h": 6036957.99943,
+   "first_bar": 1597708800000
+  },
+  {
+   "symbol": "STXUSDT",
+   "quote_volume_24h": 6017526.13367,
+   "first_bar": 1571961600000
+  },
+  {
+   "symbol": "FILUSDT",
+   "quote_volume_24h": 5774334.10024,
+   "first_bar": 1602720000000
+  },
+  {
+   "symbol": "JSTUSDT",
+   "quote_volume_24h": 5464186.846256,
+   "first_bar": 1597104000000
+  },
+  {
+   "symbol": "ETCUSDT",
+   "quote_volume_24h": 5365973.7515,
+   "first_bar": 1528761600000
+  },
+  {
+   "symbol": "STORJUSDT",
+   "quote_volume_24h": 5305097.305,
+   "first_bar": 1596067200000
+  },
+  {
+   "symbol": "ONGUSDT",
+   "quote_volume_24h": 5002340.92746,
+   "first_bar": 1550275200000
+  },
+  {
+   "symbol": "OPUSDT",
+   "quote_volume_24h": 3967193.629189,
+   "first_bar": 1654041600000
+  },
+  {
+   "symbol": "ORDIUSDT",
+   "quote_volume_24h": 3455584.73389,
+   "first_bar": 1699315200000
+  },
+  {
+   "symbol": "DGBUSDT",
+   "quote_volume_24h": 3418931.89077,
+   "first_bar": 1595203200000
+  },
+  {
+   "symbol": "FLOKIUSDT",
+   "quote_volume_24h": 3401623.97639995,
+   "first_bar": 1683244800000
+  }
+ ]
+}
