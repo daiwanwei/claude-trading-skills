@@ -11,6 +11,37 @@ Measured context that motivates these values (see the design spec):
 
 Only these named candidates are swept. A broad grid search over this few
 signals would fit noise.
+
+Which knobs the calibration actually moves. Arm assignment (`valid_vcp`,
+computed by `_validate_vcp` in `vcp_pattern_calculator.py`) is set from
+exactly four parameters: `min_contractions`, `t1_depth_min`,
+`contraction_ratio`, and `pattern_duration_min`. `right_shoulder_pct` also
+affects the artifact -- but earlier, in `_build_contractions_from`, where it
+bounds how many contractions get built into a candidate set at all, not
+inside `_validate_vcp`.
+
+Verified by reading every call site (2026-08-24): the following eight
+parameters, though threaded through as candidate kwargs, cannot change
+`valid_vcp` or any downstream measured number in a calibration artifact --
+`_validate_vcp` only appends a non-invalidating entry to `issues`, or the
+parameter feeds a code path `valid_vcp` never touches:
+  - `t1_depth_max`, `pattern_duration_max` -- `_validate_vcp` flags-not-gates
+    ("Don't invalidate, just flag"); `_score_vcp` does not consume `issues`.
+  - `wide_and_loose_max_duration` -- sets the separate `wide_and_loose` flag
+    (pattern_type/composite-score input), independent of `valid_vcp`.
+  - `min_pct_above_52w_low`, `max_pct_below_52w_high`, `min_rs_rank` --
+    trend-template criteria 5/6/7, which feed `execution_state` and
+    `composite_score`, not `vcp_pattern_calculator`'s `valid_vcp`.
+  - `rs_periods` -- feeds relative-strength/criterion 7 only, same as above.
+  - `year_window_bars` -- feeds `yearHigh`/`yearLow` for criteria 5/6 only.
+
+So this calibration's "always-on crypto adjustments" for
+`max_pct_below_52w_high` (60.0), `min_pct_above_52w_low` (15.0), and
+`min_rs_rank` (60) below, and `crypto-long-base`'s `pattern_duration_max=400`
+override, never moved a single number in `references/VALIDATION.md` -- they
+are untested by this calibration, not validated by it. `crypto-long-base`'s
+only calibration-tested difference from `crypto-moderate` is
+`min_contraction_days` (10 vs 7) and `lookback_days` (240 vs 150).
 """
 
 from __future__ import annotations

@@ -175,6 +175,50 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
   across the same four at the same time. Any monotone trend observed across
   them is a property of these four hand-tuned configurations, not evidence
   attributable to any one threshold.
+- **Eight swept parameters never move the artifact.** Arm assignment
+  (`valid_vcp`) is set by `_validate_vcp` in `vcp_pattern_calculator.py` from
+  exactly four parameters: `min_contractions`, `t1_depth_min`,
+  `contraction_ratio`, `pattern_duration_min`. Verified by reading every call
+  site: `t1_depth_max` and `pattern_duration_max` only append a
+  non-invalidating entry to `_validate_vcp`'s `issues` list (comment: "Don't
+  invalidate, just flag") and `_score_vcp` never reads `issues`;
+  `wide_and_loose_max_duration` sets the separate `wide_and_loose` flag;
+  `min_pct_above_52w_low`, `max_pct_below_52w_high`, `min_rs_rank`, and
+  `rs_periods` feed trend-template criteria 5/6/7 and relative strength, which
+  reach `execution_state`/`composite_score` but not
+  `vcp_pattern_calculator`'s `valid_vcp`; `year_window_bars` only feeds the
+  52-week high/low those same criteria use. So `crypto_profile.py`'s
+  "always-on crypto adjustments" to `max_pct_below_52w_high` (60.0),
+  `min_pct_above_52w_low` (15.0), and `min_rs_rank` (60), and
+  `crypto-long-base`'s `pattern_duration_max=400` override, are untested by
+  this calibration, not validated by it — this calibration's treatment/control
+  split and breakout-rate gaps would be identical at any value of these eight.
+  `crypto-long-base`'s only calibration-tested difference from
+  `crypto-moderate` is `min_contraction_days` (10 vs 7) and `lookback_days`
+  (240 vs 150). (`right_shoulder_pct`, by contrast, is real: it bounds
+  contraction-set construction in `_build_contractions_from` before
+  `_validate_vcp` ever runs, so equity's 5.0 vs crypto's 12.0 does change
+  which contractions exist and therefore can change `valid_vcp`.) See
+  `crypto_profile.py`'s module docstring for the same list with source
+  references.
+- **Treatment-arm overlap is not spacing-controlled, unlike control.** The
+  control arm enforces >= `control_min_spacing` (60) bars between same-symbol
+  samples (`walk_forward.py`); the treatment arm is deduplicated only by
+  pattern identity (T1 high date, last-contraction low date, rounded pivot),
+  which does not prevent two distinct-identity treatment patterns from
+  landing within 60 bars of each other and sharing most of their forward
+  window. Independently re-measured against the full 46-symbol universe
+  (2026-08-24, same settings as the calibration run): of `equity-baseline`'s
+  52 treatment records, 4 sit within 60 bars of another same-symbol treatment
+  record (7.7%); of `crypto-moderate`'s 224, 48 do (21.4%) — both counted as
+  adjacent-in-sorted-offset pairs, the same convention as the control arm's
+  spacing check. This means the treatment arm's effective (non-overlapping)
+  sample size is smaller than its nominal n while the control arm's is not:
+  the mirror image of the inflation `control_min_spacing` exists to prevent,
+  understating rather than overstating the gap's evidentiary weight. This
+  document previously attributed the treatment/control size imbalance solely
+  to filter strictness; that remains the dominant driver, but it is not the
+  only asymmetry between the two arms.
 
 ## Gate decision (Task 13, 2026-08-24)
 
