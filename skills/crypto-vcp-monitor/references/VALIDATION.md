@@ -89,30 +89,44 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
     look like — a rate set by the market and the outcome rule, not by which
     treatment filter happened to be swept — rather than an artifact tied to
     one parameter set.
-  - Along the calibration's core single-parameter sweep
-    (`contraction_ratio`: crypto-tight 0.70 → crypto-moderate 0.75 →
-    crypto-loose 0.80 → crypto-looser 0.85, all other parameters held
-    fixed), treatment n rises monotonically (146 → 224 → 240 → 310) while
-    treatment breakout rate falls monotonically (64.38% → 62.05% → 59.58% →
-    55.16%). Stricter contraction-quality requirements produce fewer, more
-    selective signals with a higher hit rate — the direction a real effect
-    would produce. The other three crypto candidates (deep-t1, long-base,
-    three-contractions), which tighten along different axes (T1 depth, base
-    duration, contraction count), and equity-baseline, which uses an
-    unrelated equity-tuned parameter set, are directionally consistent with
-    this pattern but do not extend it into one single monotone ranking —
-    e.g. crypto-tight's rate (64.38%) is slightly higher than crypto-long-
-    base's (63.38%) despite crypto-long-base having a smaller n. Seven
-    independently-specified parameter sets landing on the same side of the
-    control baseline is harder to produce by chance than any single gap.
+  - Treatment n and breakout rate move monotonically across
+    crypto-tight → crypto-moderate → crypto-loose → crypto-looser
+    (n: 146 → 224 → 240 → 310; breakout rate: 64.38% → 62.05% → 59.58% →
+    55.16%), and `contraction_ratio` does progress cleanly across that same
+    order (0.70 → 0.75 → 0.80 → 0.85). But per `crypto_profile.py`, this is
+    **not** a controlled single-parameter sweep: `t1_depth_min` moves
+    non-monotonically across the same four candidates (12.0 → 15.0 → 15.0 →
+    12.0), and `atr_multiplier` (2.0 → 2.5 → 2.5 → 3.0) and `lookback_days`
+    (120 → 150 → 180 → 180) both vary as well. `crypto_vcp_methodology.md`
+    names `atr_multiplier` as the **dominant** knob — the one that
+    re-derives the whole ZigZag skeleton — so more than one lever is moving
+    at once, and moving in different directions across the sequence. The
+    n/breakout-rate monotonicity above is a real, measured observation
+    about these four hand-tuned, multi-parameter configurations; it cannot
+    be attributed to `contraction_ratio`, or to any single threshold, and
+    should not be read as evidence for what a controlled sweep of that one
+    parameter would show. The other three crypto candidates (deep-t1,
+    long-base, three-contractions), which tighten along still other axes
+    (T1 depth, base duration, contraction count), and equity-baseline,
+    which uses an unrelated equity-tuned parameter set, are directionally
+    consistent with the same pattern but do not extend it into one single
+    monotone ranking — e.g. crypto-tight's rate (64.38%) is slightly higher
+    than crypto-long-base's (63.38%) despite crypto-long-base having a
+    smaller n. All seven usable candidates show a positive gap, ranging
+    from 26.12 pp (crypto-looser) to 39.92 pp (equity-baseline); given the
+    document's own no-significance-test position two paragraphs above, that
+    is reported as a plain fact, not as evidence that seven positive gaps
+    are collectively less likely under chance than one gap alone — the
+    candidates share 46 overlapping symbols and, per the point just made,
+    are not independent single-axis variants either.
   - Treatment's median max **loss** is smaller in magnitude than control's
     in every one of the 8 candidates (e.g. equity-baseline -9.59% vs
     -18.48%; crypto-deep-t1 -16.11% vs -18.12%). Treatment's median max
     **gain** is close to control's and inconsistent in sign — from -0.16 pp
     (crypto-long-base, where treatment gain is marginally *below* control)
     to +6.27 pp (crypto-deep-t1). The discrimination this calibration finds
-    lives mostly in drawdown containment and pivot resolution, not in
-    upside magnitude.
+    lives mostly in a smaller median close-based drawdown excursion and in
+    pivot resolution, not in upside magnitude.
   - `equity-baseline` — the unmodified equity threshold set, carrying none
     of the crypto-specific widening in `crypto_profile.py` — shows the
     **largest gap among usable candidates** (39.92 pp). That the strongest
@@ -131,8 +145,12 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
   of a statistically distinguishable effect.
 - **Which single parameter set is the "true" edge**, isolated from the bias
   of having swept eight candidates against the same data and picking
-  whichever looked best. The monotone trend along the `contraction_ratio`
-  sweep is suggestive structure, not a validated threshold; `crypto_profile.py`'s
+  whichever looked best. The monotone trend in treatment n and breakout
+  rate across crypto-tight/moderate/loose/looser is suggestive structure,
+  not a validated threshold — and, per the note above, those four
+  candidates vary `t1_depth_min`, `atr_multiplier`, and `lookback_days`
+  simultaneously with `contraction_ratio`, so the trend cannot be
+  attributed to `contraction_ratio` specifically. `crypto_profile.py`'s
   candidates remain hypotheses, not settings production code should assume
   are optimal.
 - Any win rate, expectancy, or risk-adjusted return figure. `breakout_rate`
@@ -150,6 +168,13 @@ Median max-gain / max-loss by arm (percent, relative to detection-day close):
   reduces but does not eliminate survivorship bias.
 - **Multiple comparisons.** Eight candidates are swept; the best-looking one is
   optimistically biased by selection alone.
+- **Candidates are not single-axis sweeps.** `crypto-tight` → `crypto-moderate`
+  → `crypto-loose` → `crypto-looser` progress cleanly in `contraction_ratio`
+  (0.70 → 0.85), but `t1_depth_min`, `atr_multiplier` (the parameter
+  `crypto_vcp_methodology.md` calls dominant), and `lookback_days` all vary
+  across the same four at the same time. Any monotone trend observed across
+  them is a property of these four hand-tuned configurations, not evidence
+  attributable to any one threshold.
 
 ## Gate decision (Task 13, 2026-08-24)
 
