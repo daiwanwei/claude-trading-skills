@@ -27,6 +27,9 @@ def calculate_trend_template(
     rs_rank: Optional[int] = None,
     ext_threshold: float = 8.0,
     max_sma200_extension: float = 50.0,
+    min_pct_above_52w_low: float = 25.0,
+    max_pct_below_52w_high: float = 25.0,
+    min_rs_rank: int = 70,
 ) -> dict:
     """
     Evaluate stock against Minervini's 7-point Trend Template.
@@ -35,6 +38,9 @@ def calculate_trend_template(
         historical_prices: Daily OHLCV data (most recent first), need 200+ days
         quote_data: Current quote with price, yearHigh, yearLow
         rs_rank: Pre-calculated RS rank estimate (0-99). If None, criterion 7 is skipped.
+        min_pct_above_52w_low: Minimum % above 52-week low for criterion 5 (default 25.0)
+        max_pct_below_52w_high: Maximum % below 52-week high for criterion 6 (default 25.0)
+        min_rs_rank: Minimum RS rank (exclusive) for criterion 7 (default 70)
 
     Returns:
         Dict with score (0-100), criteria details, pass/fail status
@@ -123,14 +129,17 @@ def calculate_trend_template(
         "detail": f"Price ${price:.2f} vs SMA50 ${sma50:.2f}" if sma50 else "Insufficient data",
     }
 
-    # Criterion 5: Price at least 25% above 52-week low
+    # Criterion 5: Price at least min_pct_above_52w_low% above 52-week low
     c5_pass = False
     if year_low > 0:
         pct_above_low = (price - year_low) / year_low * 100
-        c5_pass = pct_above_low >= 25
+        c5_pass = pct_above_low >= min_pct_above_52w_low
         criteria["c5_25pct_above_52w_low"] = {
             "passed": c5_pass,
-            "detail": f"{pct_above_low:.1f}% above 52w low ${year_low:.2f} (need >= 25%)",
+            "detail": (
+                f"{pct_above_low:.1f}% above 52w low ${year_low:.2f} "
+                f"(need >= {min_pct_above_52w_low:g}%)"
+            ),
         }
     else:
         criteria["c5_25pct_above_52w_low"] = {
@@ -138,14 +147,17 @@ def calculate_trend_template(
             "detail": "52-week low data unavailable",
         }
 
-    # Criterion 6: Price within 25% of 52-week high
+    # Criterion 6: Price within max_pct_below_52w_high% of 52-week high
     c6_pass = False
     if year_high > 0:
         pct_below_high = (year_high - price) / year_high * 100
-        c6_pass = pct_below_high <= 25
+        c6_pass = pct_below_high <= max_pct_below_52w_high
         criteria["c6_within_25pct_52w_high"] = {
             "passed": c6_pass,
-            "detail": f"{pct_below_high:.1f}% below 52w high ${year_high:.2f} (need <= 25%)",
+            "detail": (
+                f"{pct_below_high:.1f}% below 52w high ${year_high:.2f} "
+                f"(need <= {max_pct_below_52w_high:g}%)"
+            ),
         }
     else:
         criteria["c6_within_25pct_52w_high"] = {
@@ -153,13 +165,13 @@ def calculate_trend_template(
             "detail": "52-week high data unavailable",
         }
 
-    # Criterion 7: RS Rating > 70
+    # Criterion 7: RS Rating > min_rs_rank
     c7_pass = False
     if rs_rank is not None:
-        c7_pass = rs_rank > 70
+        c7_pass = rs_rank > min_rs_rank
         criteria["c7_rs_rank_above_70"] = {
             "passed": c7_pass,
-            "detail": f"RS Rank: {rs_rank} (need > 70)",
+            "detail": f"RS Rank: {rs_rank} (need > {min_rs_rank})",
         }
     else:
         criteria["c7_rs_rank_above_70"] = {
