@@ -124,6 +124,27 @@
       "timeframe": "daily"
     },
     {
+      "category": "swing-opportunity",
+      "difficulty": "advanced",
+      "display_name": "Crypto VCP Monitor",
+      "id": "crypto-vcp-monitor",
+      "integrations": [
+        {
+          "id": "binance_public",
+          "requirement": "required",
+          "type": "market_data"
+        },
+        {
+          "id": "vcp_screener_calculators",
+          "requirement": "required",
+          "type": "local_file"
+        }
+      ],
+      "status": "experimental",
+      "summary": "Calibrates and detects Minervini VCP setups in crypto majors using keyless Binance daily data.",
+      "timeframe": "daily"
+    },
+    {
       "category": "meta",
       "difficulty": "beginner",
       "display_name": "Data Quality Checker",
