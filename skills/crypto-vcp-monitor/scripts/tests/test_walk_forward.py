@@ -108,3 +108,39 @@ def test_forward_outcome_is_attached(bars):
             "timeout",
             "insufficient_data",
         }
+
+
+def test_conflicting_lookback_days_raises(bars):
+    """analyzer_kwargs['lookback_days'] disagreeing with the explicit
+    lookback_days= argument must be loud, not silently overridden — a swept
+    candidate's lookback window must never be quietly discarded."""
+    with pytest.raises(ValueError) as exc_info:
+        scan_with_controls(
+            "GOLD",
+            bars,
+            bars,
+            analyzer_kwargs={"lookback_days": 150},
+            lookback_days=120,
+        )
+    message = str(exc_info.value)
+    assert "150" in message
+    assert "120" in message
+
+
+def test_matching_lookback_days_does_not_raise(bars):
+    result = scan_with_controls(
+        "GOLD",
+        bars,
+        bars,
+        analyzer_kwargs={"lookback_days": 120},
+        lookback_days=120,
+        stride_days=10,
+    )
+    assert set(result) == {"treatment", "control"}
+
+
+def test_absent_lookback_days_does_not_raise(bars):
+    result = scan_with_controls(
+        "GOLD", bars, bars, analyzer_kwargs={}, lookback_days=120, stride_days=10
+    )
+    assert set(result) == {"treatment", "control"}

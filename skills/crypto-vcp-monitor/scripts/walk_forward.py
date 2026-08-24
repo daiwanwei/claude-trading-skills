@@ -100,7 +100,28 @@ def scan_with_controls(
     year_window_bars: int = 365,
     control_min_spacing: int = 60,
 ) -> dict:
-    """Walk `historical` and return both arms. Bars are most-recent-first."""
+    """Walk `historical` and return both arms. Bars are most-recent-first.
+
+    `analyzer_kwargs` must not carry a `lookback_days` that disagrees with
+    the explicit `lookback_days` argument. `crypto_profile.analyzer_kwargs`
+    returns candidate dicts whose `lookback_days` varies (120-240) — silently
+    preferring the explicit default here would quietly discard the swept
+    lookback window this calibration exists to test, producing a clean-
+    looking result in which that dimension never actually moved. A matching
+    value or an absent key is fine; a mismatch raises `ValueError` naming
+    both numbers.
+    """
+    kwargs = dict(analyzer_kwargs or {})
+    kwargs.pop("as_of_offset", None)
+    kwargs_lookback = kwargs.pop("lookback_days", None)
+    if kwargs_lookback is not None and kwargs_lookback != lookback_days:
+        raise ValueError(
+            f"analyzer_kwargs['lookback_days']={kwargs_lookback!r} conflicts with "
+            f"the explicit lookback_days={lookback_days!r} argument. Pass "
+            f"lookback_days={kwargs_lookback!r} explicitly to scan_with_controls "
+            "instead of leaving it inside analyzer_kwargs."
+        )
+
     empty = {"treatment": [], "control": []}
     if not historical or len(historical) < lookback_days + 30:
         return empty
@@ -108,10 +129,6 @@ def scan_with_controls(
     scanner = load_vcp_module("historical_scanner")
     screen = load_vcp_module("screen_vcp")
     outcome_module = load_vcp_module("calculators.forward_outcome")
-
-    kwargs = dict(analyzer_kwargs or {})
-    kwargs.pop("as_of_offset", None)
-    kwargs.pop("lookback_days", None)
 
     max_offset = len(historical) - lookback_days
     if max_offset <= 0:
