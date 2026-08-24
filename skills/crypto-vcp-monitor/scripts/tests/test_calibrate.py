@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Calibration statistics, the n>=30 usability gate, and CLI argument handling."""
 
+import json
+from pathlib import Path
+
+import calibrate_crypto_vcp as cal
 import pytest
 from calibrate_crypto_vcp import (
     MIN_SAMPLES,
@@ -108,3 +112,110 @@ def test_cli_defaults():
 def test_cli_rejects_bad_stride():
     with pytest.raises(SystemExit):
         parse_arguments(["--stride-days", "0"])
+
+
+class _FakeClient:
+    """Stands in for BinanceClient: no network, fixed short history."""
+
+    def __init__(self, cache_dir, quiet=False):
+        pass
+
+    def fetch_daily(self, symbol, now_ms=None):
+        return [
+            {
+                "date": f"2024-01-{i + 1:02d}",
+                "open": 100.0,
+                "high": 101.0,
+                "low": 99.0,
+                "close": 100.0 + i,
+                "volume": 1000.0,
+            }
+            for i in reversed(range(5))
+        ]
+
+
+def test_main_threads_candidate_lookback_days_into_scan_with_controls(monkeypatch, tmp_path):
+    """Regression guard for the lookback pop-then-pass: main() must hand
+    scan_with_controls the candidate's own lookback_days (crypto-loose sets
+    180, not the 120 default) as the explicit keyword, and analyzer_kwargs
+    must no longer carry the key. Asserting merely that main() 'does not
+    raise' would be weaker than it looks — it would also pass if both values
+    were wrongly 120, since scan_with_controls only raises on a *conflict*,
+    not on a wrong-but-matching pair."""
+    captured_calls = []
+
+    def fake_scan_with_controls(symbol, historical, benchmark, **kwargs):
+        captured_calls.append(kwargs)
+        return {"treatment": [], "control": []}
+
+    monkeypatch.setattr(cal, "BinanceClient", _FakeClient)
+    monkeypatch.setattr(cal, "scan_with_controls", fake_scan_with_controls)
+    monkeypatch.setattr(
+        cal, "load_universe", lambda path=None: {"frozen_on": "2026-08-24", "symbols": ["AAAUSDT"]}
+    )
+    monkeypatch.setattr(cal, "universe_symbols", lambda manifest: list(manifest["symbols"]))
+
+    rc = cal.main(
+        [
+            "--candidates",
+            "crypto-loose",
+            "--limit",
+            "1",
+            "--output-dir",
+            str(tmp_path),
+            "--cache-dir",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+
+    assert rc == 0
+    assert len(captured_calls) == 1
+    kwargs = captured_calls[0]
+    assert kwargs["lookback_days"] == 180, "crypto-loose's configured lookback, not the 120 default"
+    assert "lookback_days" not in kwargs["analyzer_kwargs"]
+
+
+def test_main_isolates_a_per_symbol_scan_failure_and_records_it_in_the_json(monkeypatch, tmp_path):
+    """A bad symbol must not abort the candidate, and the failure must be
+    readable in the artifact a human actually opens — the written JSON, not
+    just in-memory state."""
+    good_record = {
+        "forward_outcome": {"outcome_type": "breakout", "max_gain_pct": 10.0, "max_loss_pct": -2.0}
+    }
+
+    def fake_scan_with_controls(symbol, historical, benchmark, **kwargs):
+        if symbol == "BADUSDT":
+            raise RuntimeError("simulated cursor failure")
+        return {"treatment": [good_record], "control": []}
+
+    monkeypatch.setattr(cal, "BinanceClient", _FakeClient)
+    monkeypatch.setattr(cal, "scan_with_controls", fake_scan_with_controls)
+    monkeypatch.setattr(
+        cal,
+        "load_universe",
+        lambda path=None: {"frozen_on": "2026-08-24", "symbols": ["GOODUSDT", "BADUSDT"]},
+    )
+    monkeypatch.setattr(cal, "universe_symbols", lambda manifest: list(manifest["symbols"]))
+
+    rc = cal.main(
+        [
+            "--candidates",
+            "crypto-loose",
+            "--output-dir",
+            str(tmp_path),
+            "--cache-dir",
+            str(tmp_path),
+            "--quiet",
+        ]
+    )
+
+    assert rc == 0
+
+    out_files = list(Path(tmp_path).glob("crypto_vcp_calibration_*.json"))
+    assert len(out_files) == 1
+    payload = json.loads(out_files[0].read_text())
+
+    candidate = payload["candidates"]["crypto-loose"]
+    assert candidate["failed_symbols"] == ["BADUSDT"]
+    assert candidate["treatment"]["n"] == 1, "GOODUSDT's record must still make it into the arm"
