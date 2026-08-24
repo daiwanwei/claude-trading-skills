@@ -91,3 +91,25 @@ def test_fetch_daily_rejects_unsafe_symbol(tmp_path):
     client = BinanceClient(cache_dir=str(tmp_path))
     with pytest.raises(ValueError):
         client.fetch_daily("../../etc/passwd")
+
+
+def test_fetch_daily_cache_is_scoped_to_now_ms(tmp_path, monkeypatch):
+    """Two calls with different explicit now_ms must not share a cache entry.
+
+    Otherwise the second call would silently inherit the first call's
+    closed-bar cutoff -- a look-ahead leak in the data layer.
+    """
+    client = BinanceClient(cache_dir=str(tmp_path))
+    page = [_kline(DAY0, 1.0), _kline(DAY0 + DAY_MS, 2.0), _kline(DAY0 + 2 * DAY_MS, 3.0)]
+    monkeypatch.setattr(client, "_get", lambda url, params: page)
+
+    # "early" falls inside the second bar's window: only the first bar is closed.
+    early = client.fetch_daily("BTCUSDT", now_ms=DAY0 + DAY_MS + 1000)
+    # "late" falls inside the third bar's window: the first two bars are closed.
+    late = client.fetch_daily("BTCUSDT", now_ms=DAY0 + 2 * DAY_MS + 1000)
+
+    assert [b["close"] for b in early] == [1.0]
+    assert [b["close"] for b in late] == [
+        2.0,
+        1.0,
+    ], "the later cutoff must include the newly closed bar, not the cached earlier result"

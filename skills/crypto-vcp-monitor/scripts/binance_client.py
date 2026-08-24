@@ -78,9 +78,22 @@ class BinanceClient:
         if not self.quiet:
             print(message)
 
-    def _cache_path(self, symbol: str) -> str:
-        day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        return os.path.join(self.cache_dir, f"{day}_{symbol}_1d.json")
+    def _cache_path(self, symbol: str, now_ms: int | None) -> str:
+        """Cache key for `symbol`.
+
+        When `now_ms` is explicitly supplied, the cutoff it encodes is part of
+        what the cache entry means -- two calls with different explicit
+        `now_ms` values must not share a file, or the second call would
+        silently inherit the first call's closed-bar cutoff (a look-ahead
+        leak). `now_ms` is coerced through `int()` so the key can only ever
+        render as digits (with an optional leading `-`), never a path
+        separator.
+        """
+        if now_ms is not None:
+            key = f"asof{int(now_ms)}"
+        else:
+            key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        return os.path.join(self.cache_dir, f"{key}_{symbol}_1d.json")
 
     def _get(self, url: str, params: dict):
         """GET with 429-aware exponential backoff."""
@@ -99,7 +112,7 @@ class BinanceClient:
     def fetch_daily(self, symbol: str, now_ms: int | None = None) -> list[dict]:
         """Return every closed daily bar for `symbol`, most-recent-first."""
         sym = sanitize_symbol(symbol)
-        cache_path = self._cache_path(sym)
+        cache_path = self._cache_path(sym, now_ms)
         if os.path.exists(cache_path):
             with open(cache_path) as handle:
                 return json.load(handle)
