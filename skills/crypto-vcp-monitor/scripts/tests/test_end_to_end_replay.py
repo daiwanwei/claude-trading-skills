@@ -78,9 +78,22 @@ def test_pipeline_is_deterministic():
 
 def test_pipeline_produces_a_wellformed_comparison():
     result = _run()
-    assert set(result) == {"treatment", "control", "breakout_rate_gap", "usable", "min_samples"}
+    assert set(result) == {
+        "treatment",
+        "control",
+        "breakout_rate_gap",
+        "usable",
+        "min_samples",
+        "band_geometry",
+        "inside_band",
+        "inside_band_breakout_rate_gap",
+        "inside_band_usable",
+    }
     assert result["treatment"]["n"] >= 0
     assert isinstance(result["usable"], bool)
+    assert isinstance(result["inside_band_usable"], bool)
+    assert set(result["band_geometry"]) == {"treatment", "control"}
+    assert set(result["inside_band"]) == {"treatment", "control"}
 
 
 def test_small_fixture_is_correctly_reported_as_unusable():

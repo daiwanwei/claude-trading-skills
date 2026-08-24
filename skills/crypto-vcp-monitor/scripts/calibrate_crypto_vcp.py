@@ -77,19 +77,68 @@ def summarize_arm(records: list) -> dict:
     }
 
 
+def _band_geometry_stats(records: list) -> dict:
+    """Median band position and pre-resolved share across a full arm
+    (unfiltered — this describes the raw arm the caller passed in, not the
+    inside-band subset). `band_position`/`pre_resolved` are `None` on records
+    predating this instrumentation or with a degenerate pivot<=stop, so both
+    stats are computed over only the records that carry a real value."""
+    positions = [r["band_position"] for r in records if r.get("band_position") is not None]
+    flags = [r["pre_resolved"] for r in records if r.get("pre_resolved") is not None]
+    return {
+        "median_band_position": statistics.median(positions) if positions else None,
+        "pre_resolved_share": (sum(1 for f in flags if f) / len(flags)) if flags else None,
+    }
+
+
 def compare(treatment: list, control: list) -> dict:
-    """Compare the two arms and apply the sample-size gate."""
+    """Compare the two arms and apply the sample-size gate.
+
+    Alongside the raw (unfiltered) arms — kept unchanged, since a reader must
+    be able to see both — also reports an inside-band comparison restricted to
+    records where the detection-day close sat inside [stop, pivot]
+    (`pre_resolved` is False). Records outside that band already had their
+    forward race largely decided at detection time, so folding them into the
+    headline gap conflates "contraction quality predicted the outcome" with
+    "the close started past the pivot or stop." The same MIN_SAMPLES gate
+    applies to the inside-band treatment n, reported separately as
+    `inside_band_usable` — clearing the raw gate does not imply clearing this
+    stricter one.
+    """
     t_summary = summarize_arm(treatment)
     c_summary = summarize_arm(control)
     gap = None
     if t_summary["breakout_rate"] is not None and c_summary["breakout_rate"] is not None:
         gap = t_summary["breakout_rate"] - c_summary["breakout_rate"]
+
+    treatment_inside = [r for r in treatment if r.get("pre_resolved") is False]
+    control_inside = [r for r in control if r.get("pre_resolved") is False]
+    t_inside_summary = summarize_arm(treatment_inside)
+    c_inside_summary = summarize_arm(control_inside)
+    inside_gap = None
+    if (
+        t_inside_summary["breakout_rate"] is not None
+        and c_inside_summary["breakout_rate"] is not None
+    ):
+        inside_gap = t_inside_summary["breakout_rate"] - c_inside_summary["breakout_rate"]
+    inside_band_usable = t_inside_summary["n"] >= MIN_SAMPLES
+
     return {
         "treatment": t_summary,
         "control": c_summary,
         "breakout_rate_gap": gap,
         "usable": t_summary["n"] >= MIN_SAMPLES,
         "min_samples": MIN_SAMPLES,
+        "band_geometry": {
+            "treatment": _band_geometry_stats(treatment),
+            "control": _band_geometry_stats(control),
+        },
+        "inside_band": {
+            "treatment": t_inside_summary,
+            "control": c_inside_summary,
+        },
+        "inside_band_breakout_rate_gap": inside_gap,
+        "inside_band_usable": inside_band_usable,
     }
 
 
@@ -200,6 +249,13 @@ def main(argv=None) -> int:
             f"{name:28} treatment n={summary['treatment']['n']:>4}  "
             f"control n={summary['control']['n']:>4}  "
             f"gap={summary['breakout_rate_gap']}{flag}"
+        )
+        inside = summary["inside_band"]
+        inside_flag = "" if summary["inside_band_usable"] else f"  [UNUSABLE: n < {MIN_SAMPLES}]"
+        print(
+            f"{'':28} inside-band treatment n={inside['treatment']['n']:>4}  "
+            f"control n={inside['control']['n']:>4}  "
+            f"gap={summary['inside_band_breakout_rate_gap']}{inside_flag}"
         )
 
     payload = {

@@ -88,6 +88,65 @@ def test_compare_gap_is_none_when_either_arm_is_empty():
     assert result["breakout_rate_gap"] is None
 
 
+def _band_record(outcome_type, gain, loss, pre_resolved, band_position=None):
+    record = _record(outcome_type, gain, loss)
+    record["pre_resolved"] = pre_resolved
+    record["band_position"] = band_position
+    return record
+
+
+def test_compare_inside_band_excludes_pre_resolved_records():
+    """The inside-band arm must drop records whose close already sat outside
+    [stop, pivot] at detection — the confound `compare` exists to isolate."""
+    treatment = [
+        _band_record("breakout", 10.0, -2.0, pre_resolved=False, band_position=0.5)
+    ] * 5 + [_band_record("breakout", 10.0, -2.0, pre_resolved=True, band_position=1.5)] * 20
+    control = [_band_record("stop_hit", 1.0, -8.0, pre_resolved=False, band_position=0.3)] * 5
+    result = compare(treatment, control)
+    assert result["inside_band"]["treatment"]["n"] == 5
+    assert result["inside_band"]["control"]["n"] == 5
+    assert result["inside_band"]["treatment"]["breakout_rate"] == pytest.approx(1.0)
+    assert result["inside_band_breakout_rate_gap"] == pytest.approx(1.0)
+    # The raw (unfiltered) arms must still be reported unchanged alongside it.
+    assert result["treatment"]["n"] == 25
+    assert result["control"]["n"] == 5
+
+
+def test_inside_band_usable_gate_is_independent_of_raw_gate():
+    """A candidate can clear the raw n>=MIN_SAMPLES gate while its inside-band
+    subset does not — the two usability flags must not be conflated."""
+    treatment = [
+        _band_record("breakout", 10.0, -2.0, pre_resolved=False, band_position=0.5)
+    ] * 10 + [_band_record("breakout", 10.0, -2.0, pre_resolved=True, band_position=1.5)] * 25
+    control = [_band_record("stop_hit", 1.0, -8.0, pre_resolved=False, band_position=0.3)] * 50
+    result = compare(treatment, control)
+    assert result["usable"] is True  # raw n = 35 >= MIN_SAMPLES
+    assert result["inside_band_usable"] is False  # inside-band n = 10 < MIN_SAMPLES
+
+
+def test_band_geometry_reports_median_position_and_pre_resolved_share():
+    treatment = [
+        _band_record("breakout", 10.0, -2.0, pre_resolved=False, band_position=0.2),
+        _band_record("breakout", 10.0, -2.0, pre_resolved=False, band_position=0.4),
+        _band_record("breakout", 10.0, -2.0, pre_resolved=True, band_position=1.5),
+        _band_record("breakout", 10.0, -2.0, pre_resolved=True, band_position=-0.5),
+    ]
+    result = compare(treatment, [])
+    stats = result["band_geometry"]["treatment"]
+    assert stats["median_band_position"] == pytest.approx(0.3)
+    assert stats["pre_resolved_share"] == pytest.approx(0.5)
+
+
+def test_band_geometry_handles_missing_fields_as_none():
+    """Records predating this instrumentation (no band_position/pre_resolved
+    keys) must not crash the geometry stats — they're simply excluded."""
+    treatment = [_record("breakout", 10.0, -2.0)] * 5
+    result = compare(treatment, [])
+    stats = result["band_geometry"]["treatment"]
+    assert stats["median_band_position"] is None
+    assert stats["pre_resolved_share"] is None
+
+
 def test_buy_and_hold_return_uses_the_forward_window():
     bars = [
         {"date": "2024-03-01", "close": 120.0},

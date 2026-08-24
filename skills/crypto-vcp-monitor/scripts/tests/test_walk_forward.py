@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 import pytest
-from walk_forward import load_vcp_module, scan_with_controls
+from walk_forward import _record, load_vcp_module, scan_with_controls
 
 GOLDEN = (
     Path(__file__).resolve().parents[3]
@@ -144,3 +144,57 @@ def test_absent_lookback_days_does_not_raise(bars):
         "GOLD", bars, bars, analyzer_kwargs={}, lookback_days=120, stride_days=10
     )
     assert set(result) == {"treatment", "control"}
+
+
+def _band_result(price, pivot, stop):
+    """Minimal `analyze_stock`-shaped result for exercising `_record`'s band
+    geometry math directly, without running the full scan."""
+    return {
+        "price": price,
+        "composite_score": 50,
+        "execution_state": "Setup",
+        "vcp_pattern": {
+            "pivot_price": pivot,
+            "num_contractions": 2,
+            "contractions": [
+                {"high_date": "2024-01-01", "low_date": "2024-01-05", "low_price": stop + 5},
+                {"high_date": "2024-01-10", "low_date": "2024-01-15", "low_price": stop},
+            ],
+        },
+    }
+
+
+def test_record_close_above_pivot_is_pre_resolved_above_one():
+    result = _band_result(price=110.0, pivot=100.0, stop=80.0)
+    record = _record("GOLD", result, offset=5, as_of_date="2024-01-20", outcome={}, valid_vcp=True)
+    assert record["band_position"] == pytest.approx(1.5)
+    assert record["band_position"] > 1
+    assert record["pre_resolved"] is True
+
+
+def test_record_close_below_stop_is_pre_resolved_below_zero():
+    result = _band_result(price=70.0, pivot=100.0, stop=80.0)
+    record = _record("GOLD", result, offset=5, as_of_date="2024-01-20", outcome={}, valid_vcp=False)
+    assert record["band_position"] == pytest.approx(-0.5)
+    assert record["band_position"] < 0
+    assert record["pre_resolved"] is True
+
+
+def test_record_mid_band_close_is_not_pre_resolved():
+    result = _band_result(price=90.0, pivot=100.0, stop=80.0)
+    record = _record("GOLD", result, offset=5, as_of_date="2024-01-20", outcome={}, valid_vcp=True)
+    assert record["band_position"] == pytest.approx(0.5)
+    assert record["pre_resolved"] is False
+    # Sanity-check the close-relative pct fields too, since they share the
+    # same close/pivot/stop inputs as band_position.
+    assert record["pct_to_pivot"] == pytest.approx((100.0 - 90.0) / 90.0 * 100)
+    assert record["pct_to_stop"] == pytest.approx((80.0 - 90.0) / 90.0 * 100)
+
+
+def test_record_pivot_equal_stop_yields_none_band_position():
+    """pivot == stop must not raise ZeroDivisionError, and the undefined
+    band_position must not be silently coerced to a boolean pre_resolved."""
+    result = _band_result(price=100.0, pivot=100.0, stop=100.0)
+    record = _record("GOLD", result, offset=5, as_of_date="2024-01-20", outcome={}, valid_vcp=False)
+    assert record["band_position"] is None
+    assert record["pre_resolved"] is None

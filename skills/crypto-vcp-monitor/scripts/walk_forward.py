@@ -20,6 +20,13 @@ Control samples additionally require a minimum bar spacing. With stride 5 and a
 forward path; the treatment arm is protected by pattern-identity dedup, so
 without spacing the control arm would inflate to roughly 10x while remaining
 largely one observation.
+
+Each record also carries band geometry: where the detection-day close sat
+between the last contraction's low (stop) and the pivot, via
+`pct_to_pivot`/`pct_to_stop`/`band_position`/`pre_resolved`. This exists to
+let a downstream comparison separate "contraction quality predicted the
+outcome" from "the close was already past the pivot or stop at detection
+time, so the race was largely decided before the forward window opened."
 """
 
 from __future__ import annotations
@@ -72,6 +79,38 @@ def load_vcp_module(name: str):
 def _record(symbol, result, offset, as_of_date, outcome, valid_vcp):
     pattern = result.get("vcp_pattern", {})
     contractions = pattern.get("contractions") or []
+    pivot = pattern.get("pivot_price")
+    stop = contractions[-1].get("low_price") if contractions else None
+    # `result["price"]` is the as-of-offset close: `analyze_stock` sets it
+    # straight from `quote["price"]`, which `build_quote_from_history`
+    # synthesizes from `historical[as_of_offset]` — i.e. the detection-day
+    # close, not `historical[0]` (the most recent/right-edge bar). This is
+    # also the exact `current_price` `calculate_pivot_proximity` used, so the
+    # band-geometry fields below describe the same trade the outcome rule
+    # scores.
+    close = result.get("price")
+
+    # Computed directly rather than reusing `result["distance_from_pivot_pct"]`
+    # (= (close - pivot) / pivot * 100): that figure is pivot-relative and
+    # opposite in sign from the close-relative pct_to_pivot/pct_to_stop needed
+    # here to characterize where detection-day price sat inside the
+    # [stop, pivot] band the outcome rule races.
+    pct_to_pivot = None
+    pct_to_stop = None
+    band_position = None
+    pre_resolved = None
+    if close is not None and close > 0:
+        if pivot is not None:
+            pct_to_pivot = (pivot - close) / close * 100
+        if stop is not None:
+            pct_to_stop = (stop - close) / close * 100
+        if pivot is not None and stop is not None and pivot > stop:
+            # band_position is undefined (not just divide-by-zero-prone) when
+            # pivot <= stop, so it — and pre_resolved, which depends on it —
+            # stay None rather than defaulting to False in that degenerate case.
+            band_position = (close - stop) / (pivot - stop)
+            pre_resolved = band_position < 0 or band_position > 1
+
     return {
         "symbol": symbol,
         "as_of_date": as_of_date,
@@ -80,11 +119,16 @@ def _record(symbol, result, offset, as_of_date, outcome, valid_vcp):
         "num_contractions": pattern.get("num_contractions", 0),
         "composite_score": result.get("composite_score"),
         "execution_state": result.get("execution_state"),
-        "pivot_price": pattern.get("pivot_price"),
-        "stop_price": contractions[-1].get("low_price") if contractions else None,
+        "pivot_price": pivot,
+        "stop_price": stop,
         "t1_high_date": contractions[0].get("high_date") if contractions else None,
         "last_low_date": contractions[-1].get("low_date") if contractions else None,
         "forward_outcome": outcome,
+        "detection_close": close,
+        "pct_to_pivot": pct_to_pivot,
+        "pct_to_stop": pct_to_stop,
+        "band_position": band_position,
+        "pre_resolved": pre_resolved,
     }
 
 
