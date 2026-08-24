@@ -44,7 +44,7 @@ Claude Trading Skillsの全スキルをカテゴリ別に紹介します。各�
 |--------|------|---------|
 | **CANSLIM Screener** | William O'NeilのCANSLIM手法で成長株を7コンポーネントスコアリング。四半期決算、年次成長、新高値、需給、リーダーシップ、機関投資家、市場方向を分析 | <span class="badge badge-api">FMP必須</span> |
 | **VCP Screener** | Mark MinerviniのVolatility Contraction Pattern を検出。Stage 2上昇トレンド銘柄のボラティリティ収縮とブレイクアウトポイントを識別 | <span class="badge badge-api">FMP必須</span> |
-| **Crypto VCP Monitor** | Minerviniのボラティリティ収縮パターンを暗号資産主要銘柄（BTC/ETH/SOL/BNB）に適用。APIキー不要のBinance日足データを使用し、シグナルを主張する前に処理群/対照群バックテストで閾値を較正 | <span class="badge badge-free">API不要</span> |
+| **Crypto VCP Monitor** | 暗号資産主要銘柄（BTC/ETH/SOL/BNB）向けにMinerviniのVolatility Contraction Patternの閾値を較正。APIキー不要のBinance日足データで、固定46銘柄ユニバースに対する処理群/対照群バックテストを実行し、サンプルサイズ基準をクリアするパラメータセットを報告。現在時点の検出機能はまだ無く、今後の課題 | <span class="badge badge-free">API不要</span> |
 | **Stockbee Momentum Burst Screener** | Stockbee型の短期モメンタムバースト候補をスクリーニング。4%ブレイクアウト、ドルブレイクアウト、レンジ拡大トリガーをセットアップ品質・リスク幅で0-100点（A/B/Watch）評価。候補生成専用で technical-analyst / position-sizer に接続 | <span class="badge badge-api">FMP必須</span> <span class="badge badge-optional">ローカルJSON任意</span> |
 | **[Stockbee Exhaustion Hammer Screener]({{ '/ja/skills/stockbee-exhaustion-hammer-screener/' | relative_url }})** | Stockbee型の売り枯れハンマー候補をスクリーニング。流動性、直前モメンタム、押し目の深さ、undercut/reclaim、長い下ヒゲ、終値位置、ストップまでのリスクを評価する候補生成専用スキル | <span class="badge badge-api">FMP必須</span> <span class="badge badge-optional">ローカルJSON任意</span> |
 | **FinViz Screener** | 自然言語（日本語/英語）でFinVizスクリーニング条件を構築。500以上のフィルターコードに対応し、Chromeで結果を表示。**テーマクロス検索**（30以上のテーマ × 268サブテーマ）で「AI × 物流」「データセンター × 電力」等のナラティブベース検索が可能 | <span class="badge badge-free">API不要</span> <span class="badge badge-optional">FINVIZ任意</span> |

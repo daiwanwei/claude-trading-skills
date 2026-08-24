@@ -209,7 +209,7 @@ skills:
   display_name: Crypto VCP Monitor
   category: swing-opportunity
   status: experimental
-  summary: Calibrates and detects Minervini VCP setups in crypto majors using keyless Binance daily data.
+  summary: Calibrates Minervini VCP thresholds for crypto majors using a keyless-Binance treatment/control backtest; no live detector yet.
   timeframe: daily
   difficulty: advanced
   integrations:

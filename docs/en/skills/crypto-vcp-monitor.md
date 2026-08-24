@@ -12,7 +12,7 @@ generated: true
 # Crypto VCP Monitor
 {: .no_toc }
 
-Detects Minervini Volatility Contraction Patterns in crypto (BTC, ETH, SOL, BNB) using keyless Binance daily data, with a treatment/control backtest that calibrates the thresholds. No API key required. Use when the user asks about crypto VCP setups, whether BTC/ETH/SOL/BNB are consolidating or contracting, crypto breakout pivots, or wants VCP thresholds calibrated for crypto volatility.
+Calibrates Minervini Volatility Contraction Pattern thresholds for crypto (BTC, ETH, SOL, BNB) using a keyless-Binance treatment/control backtest over a frozen 46-symbol universe, and reports which parameter sets clear a sample-size gate. No API key required. There is no live/current-day detector yet — daily monitoring of BTC/ETH/SOL/BNB VCP setups is future work, not something this skill does today. Use when the user asks to calibrate or validate crypto VCP thresholds, or asks what evidence exists for a crypto VCP edge; do not use it to ask whether BTC/ETH/SOL/BNB are consolidating right now or where today's pivot is — no code path answers that.
 {: .fs-6 .fw-300 }
 
 <span class="badge badge-free">No API</span>

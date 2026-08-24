@@ -1,6 +1,6 @@
 ---
 name: crypto-vcp-monitor
-description: Detects Minervini Volatility Contraction Patterns in crypto (BTC, ETH, SOL, BNB) using keyless Binance daily data, with a treatment/control backtest that calibrates the thresholds. No API key required. Use when the user asks about crypto VCP setups, whether BTC/ETH/SOL/BNB are consolidating or contracting, crypto breakout pivots, or wants VCP thresholds calibrated for crypto volatility.
+description: Calibrates Minervini Volatility Contraction Pattern thresholds for crypto (BTC, ETH, SOL, BNB) using a keyless-Binance treatment/control backtest over a frozen 46-symbol universe, and reports which parameter sets clear a sample-size gate. No API key required. There is no live/current-day detector yet — daily monitoring of BTC/ETH/SOL/BNB VCP setups is future work, not something this skill does today. Use when the user asks to calibrate or validate crypto VCP thresholds, or asks what evidence exists for a crypto VCP edge; do not use it to ask whether BTC/ETH/SOL/BNB are consolidating right now or where today's pivot is — no code path answers that.
 ---
 
 # Crypto VCP Monitor Skill
@@ -13,13 +13,32 @@ thresholds differ.
 
 **No API key required** — Binance's public `/api/v3/klines` endpoint is keyless.
 
-## Current status: calibration only
+## Current status: calibration only, run and recorded
 
-The monitor is not built yet, by design. Equity VCP thresholds do not transfer to
-crypto, and four symbols produce only 8 valid patterns across nine years — far
-too few to pick thresholds from. `calibrate_crypto_vcp.py` runs the backtest that
-decides whether usable thresholds exist. Until a candidate clears 30 signals,
-this skill makes no trading claims.
+There is no live/current-day monitor. That is by design, not a gap: equity VCP
+thresholds do not transfer to crypto, and four symbols produce only 8 valid
+patterns across nine years — far too few to pick thresholds from. This skill's
+only deliverable so far is `calibrate_crypto_vcp.py`, a treatment/control
+backtest over the frozen 46-symbol universe in
+`references/calibration_universe.json` that decides whether usable thresholds
+exist at all.
+
+**That calibration has already been run**, on 2026-08-24, and its results are
+committed — do not re-run the full 46-symbol backtest to answer "does a crypto
+VCP edge look real"; read `references/VALIDATION.md` instead. Summary of what
+it found: 7 of 8 pre-specified candidates cleared the n >= 30 sample-size gate,
+with raw treatment/control breakout-rate gaps of 26-40 percentage points, but
+`VALIDATION.md` documents that a substantial share of that gap is confounded
+by where the pivot and stop sit relative to the detection-day close — read its
+inside-band comparison before treating the raw gap as the headline number, and
+read its "swept but inert parameters" note before assuming every crypto
+threshold override was calibration-tested.
+
+Nothing here answers "is BTC/ETH/SOL/BNB consolidating right now" or "where is
+today's pivot" — there is no code path that runs the calculators against a
+live/current date and reports a state. That is `monitor_crypto_vcp.py`,
+explicitly out of scope for this skill as it exists today (see "What This
+Skill Does NOT Do" below).
 
 ## Prerequisites
 
@@ -52,9 +71,14 @@ python3 skills/crypto-vcp-monitor/scripts/calibrate_crypto_vcp.py \
 
 ## What This Skill Does NOT Do
 
+- **No live/current-day detection.** `monitor_crypto_vcp.py` does not exist.
+  This skill cannot say whether BTC/ETH/SOL/BNB are consolidating today, or
+  where today's pivot/stop sits — only whether a calibration backtest found
+  usable thresholds historically. Building the monitor is future work.
 - No position sizing, order generation, or portfolio changes
 - No perpetual futures, no intraday or weekly timeframes
-- No trading recommendation until calibration clears the sample-size gate
+- No trading recommendation — `VALIDATION.md`'s inside-band comparison and
+  inert-parameter note qualify even the calibration's own gap figures
 
 ## Resources
 
