@@ -76,3 +76,8 @@ docs/superpowers/plans/*-galaxyark-*.md
 # lost, the private material would become stageable. Ignore the whole
 # directory here as a second, committed line of defense.
 .superpowers/
+
+# git worktrees for in-flight plan execution. Never commit worktree contents:
+# a worktree holds a full second checkout, so an unignored directory here
+# would stage the entire tree into the repository.
+.worktrees/
