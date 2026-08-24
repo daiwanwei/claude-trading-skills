@@ -68,7 +68,7 @@ def calculate_relative_strength(
             "error": "Insufficient S&P 500 price data (need 63+ days)",
         }
 
-    periods = rs_periods if rs_periods else RS_PERIODS
+    periods = rs_periods if rs_periods is not None else RS_PERIODS
 
     stock_closes = [d.get("close", d.get("adjClose", 0)) for d in stock_prices]
     sp500_closes = [d.get("close", d.get("adjClose", 0)) for d in sp500_prices]
