@@ -569,7 +569,7 @@ def _validate_vcp(
         issues.append(f"T1 depth too shallow ({t1_depth:.1f}%, need >= {t1_depth_min}%)")
         valid = False
     elif t1_depth > t1_depth_max:
-        issues.append(f"T1 depth too deep ({t1_depth:.1f}%, prefer <= {t1_depth_max}%)")
+        issues.append(f"T1 depth too deep ({t1_depth:.1f}%, prefer <= {t1_depth_max:g}%)")
         # Don't invalidate, just flag
 
     # Check contraction tightening (each T should be <= 75% of previous)
