@@ -98,6 +98,7 @@ def scan_history(
     stride_days: int = 5,
     outcome_days: int = 60,
     lookback_days: int = 120,
+    year_window_bars: int = 252,
     analyzer_kwargs: dict | None = None,
 ) -> list[dict]:
     """Walk ``historical`` from oldest scannable bar to ``outcome_days`` ago,
@@ -139,7 +140,9 @@ def scan_history(
     detections: list[dict] = []
 
     for offset in offsets:
-        quote = build_quote_from_history(historical, offset)
+        quote = build_quote_from_history(
+            historical, offset, year_window_bars=year_window_bars
+        )
         if quote.get("price", 0) <= 0:
             continue
 
