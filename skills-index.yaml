@@ -205,6 +205,28 @@ skills:
   - component_breakdown
   - posture_recommendation
   workflows: []
+- id: crypto-vcp-monitor
+  display_name: Crypto VCP Monitor
+  category: swing-opportunity
+  status: experimental
+  summary: Calibrates Minervini VCP thresholds for crypto majors using a keyless-Binance treatment/control backtest; no live detector yet.
+  timeframe: daily
+  difficulty: advanced
+  integrations:
+  - id: binance_public
+    type: market_data
+    requirement: required
+    note: Public spot klines endpoint, no API key; daily OHLCV and latest price
+  - id: vcp_screener_calculators
+    type: local_file
+    requirement: required
+    note: Loads skills/vcp-screener/scripts calculators directly; fails fast if absent
+  inputs:
+  - binance_daily_ohlcv
+  - calibration_universe
+  outputs:
+  - crypto_vcp_calibration_report
+  workflows: []
 - id: data-quality-checker
   display_name: Data Quality Checker
   category: meta

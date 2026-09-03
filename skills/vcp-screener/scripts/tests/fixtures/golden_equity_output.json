@@ -1,0 +1,201 @@
+{
+ "cap_reason": null,
+ "company_name": "Golden Fixture Inc",
+ "composite_score": 74.5,
+ "distance_from_pivot_pct": -1.62,
+ "execution_state": "Pre-breakout",
+ "execution_state_reasons": [
+  "-1.6% below pivot (forming pattern)"
+ ],
+ "guidance": "Buy on volume confirmation above pivot",
+ "market_cap": 5000000000,
+ "pattern_type": "VCP-adjacent",
+ "pivot_proximity": {
+  "distance_from_pivot_pct": -1.62,
+  "error": null,
+  "pivot_price": 174.8,
+  "risk_pct": 5.88,
+  "score": 90,
+  "stop_loss_price": 161.86,
+  "trade_status": "AT PIVOT (within 2%)"
+ },
+ "price": 171.9766,
+ "quality_rating": "Good VCP",
+ "rating": "Good VCP",
+ "rating_description": "Solid VCP pattern developing",
+ "relative_strength": {
+  "error": null,
+  "period_details": [
+   {
+    "period_days": 63,
+    "relative_pct": 17.55,
+    "sp500_return_pct": 2.08,
+    "stock_return_pct": 19.63,
+    "weight": 0.4
+   },
+   {
+    "period_days": 126,
+    "relative_pct": 5.78,
+    "sp500_return_pct": 4.05,
+    "stock_return_pct": 9.83,
+    "weight": 0.2
+   },
+   {
+    "period_days": 189,
+    "relative_pct": 20.32,
+    "sp500_return_pct": 6.69,
+    "stock_return_pct": 27.01,
+    "weight": 0.2
+   },
+   {
+    "period_days": 252,
+    "relative_pct": 35.92,
+    "sp500_return_pct": 9.16,
+    "stock_return_pct": 45.08,
+    "weight": 0.2
+   }
+  ],
+  "rs_rank_estimate": 80,
+  "score": 80,
+  "weighted_rs": 19.42
+ },
+ "sector": "Technology",
+ "sma200_distance_pct": 10.3,
+ "state_cap_applied": false,
+ "strongest_component": "Trend Template (Stage 2)",
+ "strongest_score": 100,
+ "symbol": "GOLD",
+ "trend_template": {
+  "criteria": {
+   "c1_price_above_sma150_200": {
+    "detail": "Price $171.98 vs SMA150 $160.90 / SMA200 $155.87",
+    "passed": true
+   },
+   "c2_sma150_above_sma200": {
+    "detail": "SMA150 $160.90 vs SMA200 $155.87",
+    "passed": true
+   },
+   "c3_sma200_trending_up": {
+    "detail": "SMA200 today $155.87 vs 22d ago $151.73",
+    "passed": true
+   },
+   "c4_price_above_sma50": {
+    "detail": "Price $171.98 vs SMA50 $165.37",
+    "passed": true
+   },
+   "c5_25pct_above_52w_low": {
+    "detail": "46.0% above 52w low $117.78 (need >= 25%)",
+    "passed": true
+   },
+   "c6_within_25pct_52w_high": {
+    "detail": "2.9% below 52w high $177.20 (need <= 25%)",
+    "passed": true
+   },
+   "c7_rs_rank_above_70": {
+    "detail": "RS Rank: 80 (need > 70)",
+    "passed": true
+   }
+  },
+  "criteria_passed": 7,
+  "criteria_total": 7,
+  "error": null,
+  "extended_penalty": 0,
+  "passed": true,
+  "raw_score": 100,
+  "score": 100,
+  "sma150": 160.9,
+  "sma200": 155.87,
+  "sma200_distance_pct": 10.33,
+  "sma200_penalty": 0,
+  "sma50": 165.37,
+  "sma50_distance_pct": 3.99
+ },
+ "valid_vcp": true,
+ "vcp_pattern": {
+  "atr_compression_ratio": 0.784,
+  "atr_value": 1.8419,
+  "contractions": [
+   {
+    "depth_pct": 21.95,
+    "duration_days": 20,
+    "high_date": "2024-09-16",
+    "high_idx": 39,
+    "high_price": 175.87,
+    "label": "T1",
+    "low_date": "2024-10-06",
+    "low_idx": 59,
+    "low_price": 137.27
+   },
+   {
+    "depth_pct": 15.12,
+    "duration_days": 14,
+    "high_date": "2024-10-24",
+    "high_idx": 77,
+    "high_price": 177.2,
+    "label": "T2",
+    "low_date": "2024-11-07",
+    "low_idx": 91,
+    "low_price": 150.41
+   },
+   {
+    "depth_pct": 6.47,
+    "duration_days": 9,
+    "high_date": "2024-11-19",
+    "high_idx": 103,
+    "high_price": 174.8,
+    "label": "T3",
+    "low_date": "2024-11-28",
+    "low_idx": 112,
+    "low_price": 163.49
+   }
+  ],
+  "error": null,
+  "num_contractions": 3,
+  "pattern_duration_days": 73,
+  "pivot_price": 174.8,
+  "right_side_range_ratio": 4.697,
+  "score": 80,
+  "valid_vcp": true,
+  "validation": {
+   "contraction_ratios": [
+    0.689,
+    0.428
+   ],
+   "issues": [],
+   "t1_depth": 21.95,
+   "valid": true
+  },
+  "wide_and_loose": false
+ },
+ "volume_pattern": {
+  "avg_volume_50d": 1117594,
+  "avg_volume_recent_10d": 1216305,
+  "breakout_volume_detected": false,
+  "breakout_volume_score": 0,
+  "contraction_volume_trend": {
+   "contraction_volumes": [
+    1135710,
+    1083544,
+    1273035
+   ],
+   "declining": false
+  },
+  "down_volume_days_20d": 7,
+  "dry_up_ratio": 1.088,
+  "error": null,
+  "net_accumulation": -1,
+  "score": 20,
+  "up_volume_days_20d": 6,
+  "zone_analysis": {
+   "zone_a_avg_volume": 1273035,
+   "zone_a_ratio": 1.139,
+   "zone_b_avg_volume": 1216305,
+   "zone_b_ratio": 1.088,
+   "zone_c_ratio": null,
+   "zone_c_volume": null
+  }
+ },
+ "weakest_component": "Volume Pattern",
+ "weakest_score": 20,
+ "wide_and_loose": false
+}

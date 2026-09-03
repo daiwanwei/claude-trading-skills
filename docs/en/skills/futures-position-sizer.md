@@ -3,7 +3,7 @@ layout: default
 title: "Futures Position Sizer"
 grand_parent: English
 parent: Skill Guides
-nav_order: 33
+nav_order: 34
 lang_peer: /ja/skills/futures-position-sizer/
 permalink: /en/skills/futures-position-sizer/
 generated: true

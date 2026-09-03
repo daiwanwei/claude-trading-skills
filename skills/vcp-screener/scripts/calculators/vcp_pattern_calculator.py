@@ -29,6 +29,11 @@ def calculate_vcp_pattern(
     t1_depth_min: float = 8.0,
     contraction_ratio: float = 0.75,
     wide_and_loose_threshold: float = 15.0,
+    right_shoulder_pct: float = 5.0,
+    t1_depth_max: float = 35.0,
+    pattern_duration_min: int = 15,
+    pattern_duration_max: int = 325,
+    wide_and_loose_max_duration: int = 10,
 ) -> dict:
     """
     Detect Volatility Contraction Pattern in price data.
@@ -43,7 +48,15 @@ def calculate_vcp_pattern(
         atr_period: ATR calculation period
         min_contraction_days: Minimum days for a contraction to count
         wide_and_loose_threshold: Final contraction depth % above which (combined
-            with <10-day duration) flags a wide-and-loose pattern (default 15.0)
+            with <wide_and_loose_max_duration-day duration) flags a wide-and-loose
+            pattern (default 15.0)
+        right_shoulder_pct: Max % subsequent contraction highs may drift from H1
+            (default 5.0)
+        t1_depth_max: T1 depth % above which an issue is flagged (default 35.0)
+        pattern_duration_min: Minimum pattern duration in days (default 15)
+        pattern_duration_max: Maximum pattern duration in days (default 325)
+        wide_and_loose_max_duration: Duration (days) below which the final
+            contraction is considered too brief (default 10)
 
     Returns:
         Dict with score (0-100), contractions list, pattern validity, pivot point,
@@ -113,9 +126,20 @@ def calculate_vcp_pattern(
             lows,
             dates,
             min_contraction_days=min_contraction_days,
+            right_shoulder_pct=right_shoulder_pct,
         )
         if len(candidate) >= min_contractions:
-            v = _validate_vcp(candidate, n, min_contractions, t1_depth_min, contraction_ratio)
+            v = _validate_vcp(
+                candidate,
+                n,
+                min_contractions,
+                t1_depth_min,
+                contraction_ratio,
+                t1_depth_max=t1_depth_max,
+                right_shoulder_pct=right_shoulder_pct,
+                pattern_duration_min=pattern_duration_min,
+                pattern_duration_max=pattern_duration_max,
+            )
             s = _score_vcp(candidate, v)
         else:
             v = {"valid": False}
@@ -148,7 +172,17 @@ def calculate_vcp_pattern(
         }
 
     # Step C: Validate VCP
-    validation = _validate_vcp(contractions, n, min_contractions, t1_depth_min, contraction_ratio)
+    validation = _validate_vcp(
+        contractions,
+        n,
+        min_contractions,
+        t1_depth_min,
+        contraction_ratio,
+        t1_depth_max=t1_depth_max,
+        right_shoulder_pct=right_shoulder_pct,
+        pattern_duration_min=pattern_duration_min,
+        pattern_duration_max=pattern_duration_max,
+    )
 
     # Pivot price = high of the last contraction
     pivot_price = _get_pivot_price(contractions, highs, swing_highs)
@@ -167,7 +201,9 @@ def calculate_vcp_pattern(
         atr_compression_ratio = atr_10 / atr_50
 
     # Wide-and-loose flag: final contraction is deep AND very short
-    wide_and_loose = _compute_wide_and_loose(contractions, wide_and_loose_threshold)
+    wide_and_loose = _compute_wide_and_loose(
+        contractions, wide_and_loose_threshold, max_duration=wide_and_loose_max_duration
+    )
 
     # Right-side tightness: 15-bar price range / ATR(50)
     # Measures how compact the right side of the base is (lower = tighter)
@@ -413,6 +449,7 @@ def _build_contractions_from(
     lows: list[float],
     dates: list[str],
     min_contraction_days: int = 5,
+    right_shoulder_pct: float = 5.0,
 ) -> list[dict]:
     """Build contraction sequence from a specific swing high starting point.
 
@@ -424,6 +461,8 @@ def _build_contractions_from(
         lows: All low prices
         dates: All dates
         min_contraction_days: Minimum days between high and low for a contraction
+        right_shoulder_pct: Max % subsequent highs may drift from H1 before the
+            contraction search stops
     """
     h1_idx, h1_val = start_high
     contractions = []
@@ -471,10 +510,10 @@ def _build_contractions_from(
             (current_high_val - low_val) / current_high_val * 100 if current_high_val > 0 else 0
         )
 
-        # Right-shoulder validation: subsequent highs within 5% of H1
+        # Right-shoulder validation: subsequent highs within right_shoulder_pct of H1
         if contractions:
             pct_from_h1 = abs(current_high_val - h1_val) / h1_val * 100
-            if pct_from_h1 > 5:
+            if pct_from_h1 > right_shoulder_pct:
                 break
 
         contractions.append(
@@ -512,6 +551,10 @@ def _validate_vcp(
     min_contractions: int = 2,
     t1_depth_min: float = 8.0,
     contraction_ratio: float = 0.75,
+    t1_depth_max: float = 35.0,
+    right_shoulder_pct: float = 5.0,
+    pattern_duration_min: int = 15,
+    pattern_duration_max: int = 325,
 ) -> dict:
     """Validate whether the contraction pattern qualifies as a VCP."""
     issues = []
@@ -525,8 +568,8 @@ def _validate_vcp(
     if t1_depth < t1_depth_min:
         issues.append(f"T1 depth too shallow ({t1_depth:.1f}%, need >= {t1_depth_min}%)")
         valid = False
-    elif t1_depth > 35:
-        issues.append(f"T1 depth too deep ({t1_depth:.1f}%, prefer <= 35%)")
+    elif t1_depth > t1_depth_max:
+        issues.append(f"T1 depth too deep ({t1_depth:.1f}%, prefer <= {t1_depth_max:g}%)")
         # Don't invalidate, just flag
 
     # Check contraction tightening (each T should be <= 75% of previous)
@@ -558,7 +601,7 @@ def _validate_vcp(
             pct_diff = (
                 abs(curr_high - contractions[0]["high_price"]) / contractions[0]["high_price"] * 100
             )
-            if pct_diff > 5:
+            if pct_diff > right_shoulder_pct:
                 issues.append(
                     f"{contractions[i]['label']} high ${curr_high:.2f} is "
                     f"{pct_diff:.1f}% from H1 ${contractions[0]['high_price']:.2f}"
@@ -567,11 +610,11 @@ def _validate_vcp(
     # Pattern duration check (15-325 trading days)
     if len(contractions) >= 2:
         duration = contractions[-1]["low_idx"] - contractions[0]["high_idx"]
-        if duration < 15:
-            issues.append(f"Pattern too short ({duration} days, need >= 15)")
+        if duration < pattern_duration_min:
+            issues.append(f"Pattern too short ({duration} days, need >= {pattern_duration_min})")
             valid = False
-        elif duration > 325:
-            issues.append(f"Pattern too long ({duration} days, prefer <= 325)")
+        elif duration > pattern_duration_max:
+            issues.append(f"Pattern too long ({duration} days, prefer <= {pattern_duration_max})")
 
     return {
         "valid": valid,
@@ -581,16 +624,20 @@ def _validate_vcp(
     }
 
 
-def _compute_wide_and_loose(contractions: list[dict], threshold: float) -> bool:
+def _compute_wide_and_loose(
+    contractions: list[dict], threshold: float, max_duration: int = 10
+) -> bool:
     """Return True if the final contraction is wide-and-loose.
 
-    Wide-and-loose: depth > threshold AND duration < 10 days.
+    Wide-and-loose: depth > threshold AND duration < max_duration days.
     This flags patterns where the final consolidation is too deep and
     too brief to be a quality VCP setup.
 
     Args:
         contractions: List of contraction dicts (must have depth_pct, duration_days)
         threshold: Maximum acceptable depth % (final contraction)
+        max_duration: Duration (days) below which the final contraction is
+            considered too brief (default 10)
 
     Returns:
         True if final contraction qualifies as wide-and-loose
@@ -600,7 +647,7 @@ def _compute_wide_and_loose(contractions: list[dict], threshold: float) -> bool:
     final = contractions[-1]
     final_depth = final.get("depth_pct", 0.0)
     final_duration = final.get("duration_days", 999)
-    return final_depth > threshold and final_duration < 10
+    return final_depth > threshold and final_duration < max_duration
 
 
 def _get_pivot_price(

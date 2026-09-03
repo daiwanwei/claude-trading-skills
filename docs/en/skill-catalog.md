@@ -10,7 +10,7 @@ permalink: /en/skill-catalog/
 # Skill Catalog
 {: .no_toc }
 
-A comprehensive catalog of all 72 Claude Trading Skills organized by category. Badge indicators show API requirements at a glance.
+A comprehensive catalog of all 73 Claude Trading Skills organized by category. Badge indicators show API requirements at a glance.
 {: .fs-6 .fw-300 }
 
 > Use English skill names ("CANSLIM", "VCP", "FinViz", etc.) for best search results on this page.
@@ -44,6 +44,7 @@ A comprehensive catalog of all 72 Claude Trading Skills organized by category. B
 |-------|-------------|-----------------|
 | **[CANSLIM Screener]({{ '/en/skills/canslim-screener/' | relative_url }})** | Full 7-component CANSLIM growth stock scoring (C, A, N, S, L, I, M). Composite 0-100 ratings with bear market protection. Phase 3 implements 100% of O'Neil's methodology | <span class="badge badge-api">FMP Required</span> |
 | **[VCP Screener]({{ '/en/skills/vcp-screener/' | relative_url }})** | Detects Mark Minervini's Volatility Contraction Pattern. 3-phase pipeline: Pre-filter, Trend Template, VCP Detection with pivot points and trade setups | <span class="badge badge-api">FMP Required</span> |
+| **[Crypto VCP Monitor]({{ '/en/skills/crypto-vcp-monitor/' | relative_url }})** | Calibrates Minervini Volatility Contraction Pattern thresholds for crypto majors (BTC, ETH, SOL, BNB) via a keyless Binance treatment/control backtest over a frozen 46-symbol universe. Reports which parameter sets clear a sample-size gate; no live/current-day detector yet — that is future work | <span class="badge badge-free">No API</span> |
 | **[Stockbee Momentum Burst Screener]({{ '/en/skills/stockbee-momentum-burst-screener/' | relative_url }})** | Stockbee-style short-term momentum burst screening: 4% breakout, dollar breakout, and range-expansion triggers scored 0-100 (A/B/Watch) with setup-quality and risk-distance filters. Candidate generation only — routes survivors to technical-analyst and position-sizer | <span class="badge badge-api">FMP Required</span> <span class="badge badge-optional">Local JSON Optional</span> |
 | **[Stockbee Exhaustion Hammer Screener]({{ '/en/skills/stockbee-exhaustion-hammer-screener/' | relative_url }})** | Stockbee-style selling-exhaustion hammer screening for liquid stocks with prior momentum, pullback depth, undercut/reclaim behavior, long lower-wick reversal geometry, and risk-distance filters. Candidate generation only | <span class="badge badge-api">FMP Required</span> <span class="badge badge-optional">Local JSON Optional</span> |
 | **[FinViz Screener]({{ '/en/skills/finviz-screener/' | relative_url }})** | Translates natural language (Japanese/English) into FinViz filter URLs. 500+ filter codes across fundamentals, technicals, and descriptives. **Theme cross-screening** (30+ themes × 268 sub-themes) for narrative-based searches like "AI × Logistics" or "Data Centers × Power". Opens results in Chrome | <span class="badge badge-free">No API</span> <span class="badge badge-optional">FINVIZ Optional</span> |
@@ -285,5 +286,6 @@ A comprehensive catalog of all 72 Claude Trading Skills organized by category. B
 | Futures Position Sizer | -- | -- | -- |
 | FXMacroData Calendar | -- | -- | -- |
 | Residual Edge Analyzer | -- | -- | -- |
+| Crypto VCP Monitor | -- | -- | -- |
 
 "--" means not required. "Optional" means functionality is enhanced but the skill works without it.

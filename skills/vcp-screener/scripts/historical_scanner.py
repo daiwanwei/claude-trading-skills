@@ -98,6 +98,7 @@ def scan_history(
     stride_days: int = 5,
     outcome_days: int = 60,
     lookback_days: int = 120,
+    year_window_bars: int = 252,
     analyzer_kwargs: dict | None = None,
 ) -> list[dict]:
     """Walk ``historical`` from oldest scannable bar to ``outcome_days`` ago,
@@ -112,6 +113,9 @@ def scan_history(
         stride_days: Step size for the as-of cursor in trading days (default 5).
         outcome_days: Forward window for outcome evaluation (default 60).
         lookback_days: Window passed to the VCP calculator (default 120).
+        year_window_bars: Number of bars used to compute ``yearHigh``/
+            ``yearLow`` in the synthesized quote (default 252 trading days;
+            crypto callers pass 365 for 24/7 markets).
         analyzer_kwargs: Extra kwargs forwarded to ``analyze_stock`` (e.g.
             ``min_contractions``, ``t1_depth_min``, etc.).
 
@@ -139,7 +143,7 @@ def scan_history(
     detections: list[dict] = []
 
     for offset in offsets:
-        quote = build_quote_from_history(historical, offset)
+        quote = build_quote_from_history(historical, offset, year_window_bars=year_window_bars)
         if quote.get("price", 0) <= 0:
             continue
 

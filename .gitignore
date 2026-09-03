@@ -56,6 +56,13 @@ scripts/weekly_portfolio_review_fetch.py
 # CI artifacts
 htmlcov/
 .coverage
+
+# crypto-vcp-monitor's Binance klines cache (default --cache-dir .cache/binance/).
+# Untracked paths outside state/ block the pytest-pre-push hook's
+# _is_safe_dirty_tree() gate in the daily skill-improvement/skill-generation
+# launchd automations, so this must stay gitignored rather than left to
+# accumulate untracked. See docs/dev/maintenance-runbook.md.
+.cache/
 # .secrets.baseline is tracked — needed by detect-secrets pre-commit hook
 
 # Private TW market-data provider (galaxyark port) and its design spec.
