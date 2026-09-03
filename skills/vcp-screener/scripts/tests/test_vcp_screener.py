@@ -8,6 +8,7 @@ Trend Template criteria, volume patterns, pivot proximity, and scoring.
 
 import json
 import os
+import sys
 import tempfile
 from unittest import mock
 
@@ -21,12 +22,14 @@ from report_generator import generate_json_report, generate_markdown_report
 from scorer import calculate_composite_score
 from screen_vcp import (
     analyze_stock,
+    check_history_coverage,
     compute_entry_ready,
     is_stale_price,
     parse_arguments,
     passes_trend_filter,
     pre_filter_stock,
 )
+from screen_vcp import main as screen_vcp_main
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -3488,3 +3491,91 @@ class TestEarlyPostBreakoutCap:
             breakout_volume=False,
         )
         assert result["state"] == "Early-post-breakout"
+
+
+# ---------------------------------------------------------------------------
+# History coverage guard (fail loud on data outages)
+# ---------------------------------------------------------------------------
+
+
+def test_history_coverage_passes_when_every_candidate_has_history():
+    candidates = ["AAA", "BBB", "CCC"]
+    histories = {sym: _make_prices(260) for sym in candidates}
+
+    assert check_history_coverage(candidates, histories) is None
+
+
+def test_history_coverage_fails_when_every_history_is_missing():
+    candidates = ["AAA", "BBB", "CCC"]
+
+    error = check_history_coverage(candidates, {})
+
+    assert error is not None
+    assert "0/3" in error
+
+
+def test_history_coverage_counts_truncated_history_as_unusable():
+    candidates = ["AAA", "BBB"]
+    histories = {"AAA": _make_prices(260), "BBB": _make_prices(10)}
+
+    error = check_history_coverage(candidates, histories, min_coverage=0.8)
+
+    assert error is not None
+    assert "1/2" in error
+
+
+def test_history_coverage_passes_when_coverage_meets_threshold():
+    candidates = ["AAA", "BBB", "CCC", "DDD", "EEE"]
+    histories = {sym: _make_prices(260) for sym in candidates[:4]}
+
+    assert check_history_coverage(candidates, histories, min_coverage=0.8) is None
+
+
+def test_history_coverage_ignores_empty_candidate_list():
+    assert check_history_coverage([], {}) is None
+
+
+class _OutageClient:
+    """FMP client stand-in whose history endpoint is dead (quotes still work)."""
+
+    def __init__(self, *_args, **_kwargs):
+        self.calls = 0
+
+    def get_batch_quotes(self, symbols):
+        return {
+            sym: {
+                "symbol": sym,
+                "price": 100.0,
+                "yearHigh": 105.0,
+                "yearLow": 60.0,
+                "volume": 5_000_000,
+            }
+            for sym in symbols
+        }
+
+    def get_historical_prices(self, _symbol, days=260):
+        self.calls += 1
+        return None
+
+    def get_api_stats(self):
+        return {"cache_entries": 0, "api_calls_made": self.calls, "rate_limit_reached": False}
+
+
+def test_screener_exits_nonzero_when_history_fetches_all_fail(tmp_path, capsys):
+    argv = [
+        "screen_vcp.py",
+        "--universe",
+        "AAA",
+        "BBB",
+        "CCC",
+        "--output-dir",
+        str(tmp_path),
+    ]
+
+    with mock.patch.object(sys, "argv", argv), mock.patch("screen_vcp.FMPClient", _OutageClient):
+        with pytest.raises(SystemExit) as excinfo:
+            screen_vcp_main()
+
+    assert excinfo.value.code == 1
+    assert "history" in capsys.readouterr().err.lower()
+    assert list(tmp_path.glob("vcp_screener_*.json")) == []
