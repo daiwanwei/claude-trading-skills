@@ -21,6 +21,7 @@ env/
 .claude/
 .envrc
 .mcp.json
+config/daily-trading-routine.local.toml
 
 # Logs & temp
 logs/

@@ -50,6 +50,14 @@ New users should start with one of these operational workflows. Each link points
 
 See [`workflows/README.md`](workflows/README.md) for how to read a manifest and run it manually. For a one-page "which workflow fits my situation?" guide, see [Find Your Workflow](docs/en/find-your-workflow.md) ([日本語](docs/ja/find-your-workflow.md)).
 
+To run `market-regime-daily` — and, only when both risk gates allow it, the
+screening portion of `swing-opportunity-daily` — as a fail-closed scheduled
+task, see [Daily Trading Routine](docs/daily-trading-routine.md). It stops
+before the weekly-chart review and never places orders, sizes positions,
+writes trade plans, or creates theses. Execution is local either way; the
+scheduler is only a trigger, and the guide covers both a Claude Code
+scheduled task and a Codex Scheduled Task.
+
 New here? Follow [Your First Week](docs/en/your-first-week.md) ([日本語](docs/ja/your-first-week.md)) from installation through a no-paid-data-API market check, first journal entry, and first weekly review.
 
 ### What This Actually Costs

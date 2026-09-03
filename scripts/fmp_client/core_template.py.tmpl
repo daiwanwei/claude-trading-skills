@@ -172,6 +172,11 @@ class FMPClient:
 # @@IF budget
         self.max_api_calls = max_api_calls
 # @@ENDIF
+# @@IF has_quote
+        # Set once a comma-separated quote request comes back empty, so the
+        # remaining batches skip straight to per-symbol requests.
+        self._batch_quotes_unsupported = False
+# @@ENDIF
         # Circuit breaker: track consecutive failures per endpoint URL prefix
         self._endpoint_failures: dict[str, int] = {}
         self._disabled_endpoints: set[str] = set()
