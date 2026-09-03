@@ -245,6 +245,37 @@ def parse_arguments():
     return args
 
 
+MIN_HISTORY_COVERAGE = 0.8
+MIN_HISTORY_BARS = 50
+
+
+def check_history_coverage(
+    candidate_symbols: list,
+    candidate_histories: dict,
+    min_coverage: float = MIN_HISTORY_COVERAGE,
+    min_bars: int = MIN_HISTORY_BARS,
+) -> Optional[str]:
+    """Return an error message when too few candidates have usable history.
+
+    Phase 2 silently skips candidates whose history is missing or too short, so
+    a data outage (disabled endpoint, exhausted quota) produces an empty report
+    and exit code 0 - indistinguishable from "no setups today". Callers abort
+    on a non-None return instead of publishing that empty report.
+    """
+    total = len(candidate_symbols)
+    if total == 0:
+        return None
+    usable = sum(
+        1 for sym in candidate_symbols if len(candidate_histories.get(sym) or []) >= min_bars
+    )
+    if usable >= total * min_coverage:
+        return None
+    return (
+        f"Only {usable}/{total} candidates returned {min_bars}+ days of history "
+        f"(need {min_coverage:.0%}) - aborting instead of writing an empty report"
+    )
+
+
 def passes_trend_filter(tt_result: dict, trend_min_score: float = 85.0) -> bool:
     """Check if a stock passes Phase 2 trend template filter.
 
@@ -768,6 +799,11 @@ def main():
         data = client.get_historical_prices(sym, days=260)
         if data and "historical" in data:
             candidate_histories[sym] = data["historical"]
+
+    coverage_error = check_history_coverage(candidate_symbols, candidate_histories)
+    if coverage_error:
+        print(f"ERROR: {coverage_error}", file=sys.stderr)
+        sys.exit(1)
 
     # Apply Trend Template filter
     print("  Applying 7-point Trend Template...", end=" ", flush=True)

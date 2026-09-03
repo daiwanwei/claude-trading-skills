@@ -166,6 +166,56 @@ def test_run_skill_redacts_sensitive_values_from_failure(run_mock, tmp_path: Pat
 
 
 @patch("run_daily_trading_routine.subprocess.run")
+def test_run_skill_persists_child_stderr_when_skill_succeeds(run_mock, tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+
+    def create_artifact(*_args, **_kwargs):
+        (output_dir / "example_result.json").write_text('{"decision": "GO"}')
+        return CompletedProcess([], 0, stdout="done", stderr="WARN: endpoint disabled\n")
+
+    run_mock.side_effect = create_artifact
+
+    result = _run_skill(_spec(), tmp_path, output_dir, timeout=10)
+
+    assert result.status == "ok"
+    assert (output_dir / "example.stderr.log").read_text(
+        encoding="utf-8"
+    ) == "WARN: endpoint disabled\n"
+
+
+@patch("run_daily_trading_routine.subprocess.run")
+def test_run_skill_redacts_sensitive_values_from_stderr_log(run_mock, tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+
+    def create_artifact(*_args, **_kwargs):
+        (output_dir / "example_result.json").write_text('{"decision": "GO"}')
+        return CompletedProcess([], 0, stdout="", stderr="account 123456 rejected")
+
+    run_mock.side_effect = create_artifact
+
+    _run_skill(_spec(), tmp_path, output_dir, timeout=10, sensitive_values=("123456",))
+
+    log_text = (output_dir / "example.stderr.log").read_text(encoding="utf-8")
+    assert "123456" not in log_text
+    assert "[REDACTED]" in log_text
+
+
+@patch("run_daily_trading_routine.subprocess.run")
+def test_run_skill_writes_no_stderr_log_when_child_is_quiet(run_mock, tmp_path: Path) -> None:
+    output_dir = tmp_path / "output"
+
+    def create_artifact(*_args, **_kwargs):
+        (output_dir / "example_result.json").write_text('{"decision": "GO"}')
+        return CompletedProcess([], 0, stdout="done", stderr="")
+
+    run_mock.side_effect = create_artifact
+
+    _run_skill(_spec(), tmp_path, output_dir, timeout=10)
+
+    assert not (output_dir / "example.stderr.log").exists()
+
+
+@patch("run_daily_trading_routine.subprocess.run")
 def test_run_skill_reports_missing_artifact(run_mock, tmp_path: Path) -> None:
     run_mock.return_value = CompletedProcess([], 0, stdout="done", stderr="")
 
@@ -691,6 +741,75 @@ def test_optional_screener_failure_is_warning(tmp_path: Path) -> None:
 
     assert result.status == "SCREENERS_COMPLETED"
     assert result.warnings == ("momentum failed",)
+
+
+def _funnel_runner(funnel: dict):
+    def fake_runner(spec, _project_root, output_dir, **_kwargs):
+        artifact = output_dir / f"{spec.key}.json"
+        if spec.key == "vcp":
+            data = {"results": [], "metadata": {"funnel": funnel}}
+        else:
+            data = {"themes": {"all": []}}
+        return SkillResult(spec.name, "ok", artifact, data)
+
+    return fake_runner
+
+
+def test_collapsed_screener_funnel_is_warned(tmp_path: Path) -> None:
+    result = run_swing_screeners(
+        _routine_config(tmp_path),
+        tmp_path,
+        tmp_path / "run",
+        skill_runner=_funnel_runner(
+            {
+                "universe": 503,
+                "pre_filter_passed": 231,
+                "trend_template_passed": 0,
+                "vcp_candidates": 0,
+            }
+        ),
+    )
+
+    assert result.status == "SCREENERS_COMPLETED"
+    assert len(result.warnings) == 1
+    assert "pre_filter_passed=231" in result.warnings[0]
+    assert "trend_template_passed=0" in result.warnings[0]
+
+
+def test_healthy_screener_funnel_is_not_warned(tmp_path: Path) -> None:
+    result = run_swing_screeners(
+        _routine_config(tmp_path),
+        tmp_path,
+        tmp_path / "run",
+        skill_runner=_funnel_runner(
+            {
+                "universe": 503,
+                "pre_filter_passed": 293,
+                "trend_template_passed": 80,
+                "vcp_candidates": 79,
+            }
+        ),
+    )
+
+    assert result.warnings == ()
+
+
+def test_empty_universe_funnel_is_not_warned(tmp_path: Path) -> None:
+    result = run_swing_screeners(
+        _routine_config(tmp_path),
+        tmp_path,
+        tmp_path / "run",
+        skill_runner=_funnel_runner(
+            {
+                "universe": 0,
+                "pre_filter_passed": 0,
+                "trend_template_passed": 0,
+                "vcp_candidates": 0,
+            }
+        ),
+    )
+
+    assert result.warnings == ()
 
 
 def test_manual_review_queue_is_normalized_and_deterministic(tmp_path: Path) -> None:

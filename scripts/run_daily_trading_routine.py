@@ -202,12 +202,16 @@ def redacted_config(config: RoutineConfig) -> dict[str, Any]:
     return data
 
 
-def _sanitize_text(text: str, sensitive_values: tuple[str, ...]) -> str:
-    sanitized = text
+def _redact_text(text: str, sensitive_values: tuple[str, ...]) -> str:
+    redacted = text
     for value in sensitive_values:
         if value:
-            sanitized = sanitized.replace(value, "[REDACTED]")
-    return sanitized[:300]
+            redacted = redacted.replace(value, "[REDACTED]")
+    return redacted
+
+
+def _sanitize_text(text: str, sensitive_values: tuple[str, ...]) -> str:
+    return _redact_text(text, sensitive_values)[:300]
 
 
 def _redact_json(value: Any, sensitive_values: tuple[str, ...]) -> Any:
@@ -260,6 +264,13 @@ def _run_skill(
     except OSError as exc:
         warning = _sanitize_text(str(exc), sensitive_values)
         return SkillResult(spec.name, "error", None, None, warning)
+
+    # Persist the child's stderr even on success: an exit-0 skill can still have
+    # logged warnings (failed endpoints, fallbacks) that explain a degraded run,
+    # and those lines are the only record once the child process is gone.
+    stderr_log = _redact_text(completed.stderr or "", sensitive_values)
+    if stderr_log.strip():
+        (output_dir / f"{spec.key}.stderr.log").write_text(stderr_log, encoding="utf-8")
 
     if completed.returncode != 0:
         stderr = _sanitize_text(completed.stderr or "no stderr", sensitive_values)
@@ -676,6 +687,32 @@ def _candidate_rows(key: str, result: SkillResult) -> list[dict[str, Any]] | Non
     return rows if isinstance(rows, list) else None
 
 
+def _funnel_warning(name: str, data: Any) -> str | None:
+    """Warn when a screener funnel drops from a positive count straight to zero.
+
+    That shape is what a data outage looks like from the outside - the skill
+    still exits 0 and still writes a well-formed, empty report. Stages are read
+    in artifact order, so this works for any screener that emits a funnel.
+    """
+    metadata = data.get("metadata") if isinstance(data, dict) else None
+    funnel = metadata.get("funnel") if isinstance(metadata, dict) else None
+    if not isinstance(funnel, dict):
+        return None
+    previous_stage: str | None = None
+    previous_count = 0
+    for stage, count in funnel.items():
+        if isinstance(count, bool) or not isinstance(count, int):
+            return None
+        if count == 0 and previous_count > 0:
+            return (
+                f"{name} funnel collapsed at {stage}: "
+                f"{previous_stage}={previous_count} but {stage}=0 - "
+                "verify data availability before trusting an empty result"
+            )
+        previous_stage, previous_count = stage, count
+    return None
+
+
 def _normalize_candidate(
     key: str, row: dict[str, Any], artifact: Path | None
 ) -> dict[str, Any] | None:
@@ -751,6 +788,9 @@ def run_swing_screeners(
             warnings.append(f"{spec.name} artifact has an invalid candidate schema")
             required_failure = required_failure or spec.required
             continue
+        funnel_warning = _funnel_warning(spec.name, result.data)
+        if funnel_warning:
+            warnings.append(funnel_warning)
         for row in rows:
             if not isinstance(row, dict):
                 continue
