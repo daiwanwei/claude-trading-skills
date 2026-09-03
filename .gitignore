@@ -20,6 +20,9 @@ env/
 .vscode/
 .claude/
 .envrc
+.env
+.env.*
+!.env.example
 .mcp.json
 config/daily-trading-routine.local.toml
 
@@ -54,3 +57,22 @@ scripts/weekly_portfolio_review_fetch.py
 htmlcov/
 .coverage
 # .secrets.baseline is tracked — needed by detect-secrets pre-commit hook
+
+# Private TW market-data provider (galaxyark port) and its design spec.
+# The upstream Rust crate is marked PRIVATE — DO NOT DISTRIBUTE, and this
+# repo is a PUBLIC fork of tradermonty/claude-trading-skills, so neither the
+# client nor any document carrying its endpoint map may be committed.
+# NOTE: scripts/package_skills.py walks the filesystem and does NOT consult
+# .gitignore — "_private" must also stay in its EXCLUDED_DIR_NAMES or the
+# client gets zipped into the committed .skill archive.
+skills/*/scripts/providers/_private/
+docs/superpowers/specs/*-galaxyark-*.md
+docs/superpowers/plans/*-galaxyark-*.md
+
+# superpowers sdd working directory: holds full plan/task-brief artifacts for
+# in-flight work, including the galaxyark port (hostnames, table IDs, source
+# in plain text). Previously protected only by .superpowers/sdd/.gitignore
+# ("*"), an untracked file that ignores itself — if that file were ever
+# lost, the private material would become stageable. Ignore the whole
+# directory here as a second, committed line of defense.
+.superpowers/
