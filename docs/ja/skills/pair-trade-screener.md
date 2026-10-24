@@ -82,7 +82,7 @@ permalink: /ja/skills/pair-trade-screener/
 python3 pair-trade-screener/scripts/find_pairs.py --sector Technology
 
 # 特定のペアを分析
-python3 pair-trade-screener/scripts/analyze_spread.py AAPL MSFT
+python3 pair-trade-screener/scripts/analyze_spread.py --stock-a AAPL --stock-b MSFT
 
 # カスタム共和分パラメータ
 python3 pair-trade-screener/scripts/find_pairs.py \

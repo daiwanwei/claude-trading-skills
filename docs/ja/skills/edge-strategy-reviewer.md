@@ -62,6 +62,12 @@ python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
 python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
   --draft reports/edge_strategy_drafts/draft_xxx.yaml \
   --output-dir reports/ --format json --markdown-summary
+
+# バイアスチェックリスト（issue #297）— 必須のストラテジー研究バイアスゲート。
+# 必須項目が未対処のドラフトは PASS → REVISE に格下げされ、エクスポート適格性を失う。
+python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
+  --drafts-dir reports/edge_strategy_drafts/ \
+  --output-dir reports/ --bias-checklist
 ```
 
 ---
@@ -73,7 +79,8 @@ python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
 3. 信頼度スコア（全基準の加重平均）を算出
 4. 判定を決定: PASS / REVISE / REJECT
 5. エクスポート適格性を評価（PASS + export_ready_v1 + エクスポート可能なファミリー）
-6. レビュー出力（YAML または JSON）とオプションの Markdown サマリーを書き出す
+6. `--bias-checklist` 指定時は、各ドラフトをバージョン管理されたストラテジー研究バイアスチェックリスト（issue #297）で採点。ドラフトの `bias_checklist` ブロックで宣言されていない必須項目があると PASS → REVISE に格下げされ、エクスポート適格性を失う
+7. レビュー出力（YAML または JSON）とオプションの Markdown サマリーを書き出す
 
 ---
 

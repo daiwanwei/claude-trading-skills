@@ -29,6 +29,7 @@ permalink: /ja/workflows/
 | [`stockbee-20pct-study-daily`](#stockbee-20pct-study-daily) — Stockbee 20%値動き日次研究 | 毎日 | 30 | mixed | 上級 |
 | [`stockbee-ep-daily`](#stockbee-ep-daily) — Stockbee EP日次確認 | 毎日 | 40 | mixed | 上級 |
 | [`stockbee-fluency-loop`](#stockbee-fluency-loop) — Stockbeeセットアップ習熟ループ | 毎日 | 20 | no-api-basic | 中級 |
+| [`strategy-research-pipeline`](#strategy-research-pipeline) — 戦略リサーチパイプライン | 随時 | 60 | no-api-basic | 上級 |
 | [`swing-opportunity-daily`](#swing-opportunity-daily) — スイング取引機会の日次確認 | 毎日 | 40 | fmp-required | 中級 |
 | [`trade-memory-loop`](#trade-memory-loop) — 取引記憶ループ | 随時 | 30 | no-api-basic | 初級 |
 
@@ -66,7 +67,7 @@ permalink: /ja/workflows/
 
 - 入力: `holdings_snapshot`
 - 出力: `allocation_report`
-- **判断:** セクター別および個別銘柄の集中度は目標範囲内か。範囲外の場合、トレーダーはどのような具体的な再配分を提案するか。
+- **判断:** 資産配分の確認前に、同一口座の完全なブローカー保有情報とACTIVE・ PARTIALLY_CLOSEDのメモリ残数量をreconcile_positions.pyで照合し、 JSON・Markdownのreconciliation_reportを保存する。can_continueがfalse、または網羅性・口座帰属・鮮度が未確認ならここで停止する。一致を確認後、セクター別および個別銘柄の集中度は目標範囲内か。範囲外の場合、トレーダーはどのような具体的な再配分を提案するか。
 
 **ステップ 3: 配当の健全性を確認する（T1-T5異常チェック）** （任意） → `kanchi-dividend-review-monitor`
 
@@ -86,6 +87,8 @@ permalink: /ja/workflows/
 
 **手動レビュー:**
 
+- 資産配分・リバランスの確認前に照合レポートの一致を確認し、不一致は手動で解決して再照合する。
+- 照合は現時点で手動ゲートであり、既存replayのfixtureはこのゲートを実行・強制しない。
 - 保有銘柄のスナップショットが実際の証券口座（AlpacaまたはCSV）の状態を反映していることを確認する。
 - リバランス注文はブローカーで手動入力し、自動執行されないことを確認する。
 - dividend_review_findings がT1-T5の問題を示した場合、解決するまで買い増しを見送る。
@@ -665,6 +668,62 @@ permalink: /ja/workflows/
 - 日々場当たり的なルールを加えず、採用した学びを monthly-performance-review に引き渡す。
 
 **記録先:** `trader-memory-core`
+
+---
+
+## 戦略リサーチパイプライン {#strategy-research-pipeline}
+
+**`strategy-research-pipeline`** · 随時 · 約60分 · no-api-basic · 上級
+
+**実行タイミング:** 日付を特定できるローカルの日足 OHLCV parquet を使ったオフライン研究で実行する。研究チケットを検出し、ヒントを抽出した後、同じファイルと基準日で再検出する。最終チケットの評価は、その戦略とデータ期間に対応する追跡可能な指標を別のバックテストで得た後に限る。
+
+**実行してはいけないとき:** 日付や出所を確認できない過去データ、欠損したバックテスト指標、別のチケットの指標は使わない。このワークフローはバックテストの実行、外部パイプラインへのエクスポート、戦略の採用判断、注文の発注を行わない。
+
+**必須スキル:** `edge-candidate-agent`, `edge-hint-extractor`, `backtest-expert`
+
+**任意スキル:** （なし）
+
+**成果物一覧:**
+
+| 成果物 | 生成ステップ | 必須 | 下流ヒント |
+|---|---|---|---|
+| `initial_market_summary` | 1 | あり | — |
+| `initial_anomalies` | 1 | あり | — |
+| `initial_tickets` | 1 | なし | — |
+| `edge_hints` | 2 | あり | — |
+| `final_research_tickets` | 3 | あり | — |
+| `backtest_quality_assessment` | 4 | あり | — |
+
+**ステップ:**
+
+**ステップ 1: ローカル OHLCV から初期候補を検出する** → `edge-candidate-agent`
+
+- 出力: `initial_market_summary`, `initial_anomalies`, `initial_tickets`
+
+**ステップ 2: 基準日を指定して再現可能なエッジのヒントを抽出する** → `edge-hint-extractor`
+
+- 入力: `initial_market_summary`, `initial_anomalies`
+- 出力: `edge_hints`
+
+**ステップ 3: 同じ OHLCV と基準日で最終チケットを再検出する** （判断ゲート） → `edge-candidate-agent`
+
+- 入力: `edge_hints`
+- 出力: `final_research_tickets`
+- **判断:** ステップ1と同じローカル OHLCV ファイルと --as-of の日付を使い、 --hints はステップ2の hints.yaml、出力先は別ディレクトリに指定したか。検証する価値のある最終チケットがなければ、ここで停止する。
+
+**ステップ 4: 別途測定したバックテスト結果を評価する** （判断ゲート） → `backtest-expert`
+
+- 入力: `final_research_tickets`
+- 出力: `backtest_quality_assessment`
+- **判断:** 評価器を起動する前に、入力する全指標がこの最終チケットの戦略、対象銘柄群、対象期間、取引費用の前提と一致することを確認できるか。必須指標が揃い、スリッページも実際に検証したか。不明点があれば判定せず HOLD とする。 Deploy/Refine/Abandon の評価は実資金取引の承認ではない。
+
+**手動レビュー:**
+
+- 2回の候補検出では同じローカルの --ohlcv parquet と --as-of の日付を使い、 edge-hint-extractor にも同じ --as-of を渡し、hints.yaml の日付を確認する。 出力先を分け、2回目の --hints にステップ2の hints.yaml を指定する。 --export-strategies-dir と --pipeline-root は指定しない。
+- 最終チケット ID、対象銘柄群、データ期間、取引費用の前提、および別途実行した バックテスト指標の出所を、評価結果と共に保存する。
+- backtest-expert には total-trades、win-rate、avg-win-pct、avg-loss-pct、 max-drawdown-pct、years-tested、num-parameters を渡す。 --slippage-tested は費用を実際にモデル化した場合にのみ指定する。 指標の欠損や対応関係の不明点があれば、評価前に HOLD とする。
+- 先読み、生存者バイアス、アウト・オブ・サンプルの証拠を別途確認する。 評価 CLI はこれらを検証しない。不明なら HOLD とする。
+- 研究チケットと評価はローカルに留める。外部パイプラインへの出力、 live API 書き込み、証券会社への注文、実資金判断には自動で進まない。
 
 ---
 

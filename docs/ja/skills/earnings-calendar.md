@@ -72,13 +72,12 @@ export FMP_API_KEY="your-api-key-here"
 ## 3. クイックスタート
 
 ```bash
-# デフォルト: 次の7日間、時価総額 > 20億ドル
-python3 earnings-calendar/scripts/fetch_earnings_fmp.py --api-key YOUR_KEY
+# 日付範囲を位置引数 START_DATE END_DATE で指定。APIキーは FMP_API_KEY から取得
+python3 earnings-calendar/scripts/fetch_earnings_fmp.py 2025-11-03 2025-11-09
 
-# カスタム日付範囲
+# APIキーは任意の第3位置引数としても渡せる
 python3 earnings-calendar/scripts/fetch_earnings_fmp.py \
-  --from 2025-11-01 --to 2025-11-07 \
-  --api-key YOUR_KEY
+  2025-11-03 2025-11-09 YOUR_KEY
 ```
 
 ---
@@ -184,4 +183,7 @@ python scripts/generate_report.py earnings_data.json earnings_calendar_2025-11-0
 **スクリプト:**
 
 - `skills/earnings-calendar/scripts/fetch_earnings_fmp.py`
+
+- `skills/earnings-calendar/scripts/fmp_client.py`
+- `skills/earnings-calendar/scripts/_fmp_compat.py`
 - `skills/earnings-calendar/scripts/generate_report.py`

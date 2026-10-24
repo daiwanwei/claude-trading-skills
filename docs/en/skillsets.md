@@ -22,6 +22,7 @@ Purpose-specific skillset bundles for the solo-trader OS. A skillset is a catego
 |---|---|---|---|---|
 | [`core-portfolio`](#core-portfolio) — Core Portfolio | weekly | mixed | beginner | `core-portfolio-weekly` |
 | [`market-regime`](#market-regime) — Market Regime | daily | no-api-basic | beginner | `market-regime-daily` |
+| [`strategy-research`](#strategy-research) — Strategy Research | research | no-api-basic | advanced | `strategy-research-pipeline` |
 | [`swing-opportunity`](#swing-opportunity) — Swing Opportunity | daily | fmp-required | intermediate | `swing-opportunity-daily` |
 | [`trade-memory`](#trade-memory) — Trade Memory | event-driven | no-api-basic | beginner | `trade-memory-loop`, `monthly-performance-review` |
 
@@ -64,6 +65,26 @@ Purpose-specific skillset bundles for the solo-trader OS. A skillset is a catego
 **Optional skills:** `breadth-chart-analyst`, `sector-analyst`, `market-environment-analysis`, `market-news-analyst`, `downtrend-duration-analyzer`, `us-market-bubble-detector`
 
 **Related workflows:** `market-regime-daily`
+
+---
+
+## Strategy Research {#strategy-research}
+
+**`strategy-research`** · research · no-api-basic · advanced
+
+**When to use:** Research a long-side US equity idea from local historical observations: detect candidate tickets, refine them with hints, and evaluate separately measured backtest results. The strategy-research-pipeline workflow is an offline research path, not an end-to-end backtest runner.
+
+**When NOT to use:** Do not use this bundle to place trades or treat its score as strategy approval. Stop before evaluation if the final ticket cannot be matched to complete, provenance-checked backtest metrics and bias evidence.
+
+**Target users:** `strategy-researcher`
+
+**Required skills:** `edge-candidate-agent`, `edge-hint-extractor`, `backtest-expert`
+
+**Recommended skills:** (none)
+
+**Optional skills:** `strategy-pivot-designer`
+
+**Related workflows:** `strategy-research-pipeline`
 
 ---
 

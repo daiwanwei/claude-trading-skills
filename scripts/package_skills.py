@@ -9,9 +9,14 @@ security-scanner noise when users install .skill archives in Claude Web App.
 from __future__ import annotations
 
 import argparse
+import functools
+import lzma
 import os
+import stat
+import subprocess
+import zlib
 from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SKILLS_DIR = PROJECT_ROOT / "skills"
@@ -26,6 +31,14 @@ FIXED_ZIP_DATE = (2026, 1, 1, 0, 0, 0)
 EXCLUDED_DIR_NAMES = {"tests", "__pycache__", ".pytest_cache", "_private"}
 EXCLUDED_FILE_NAMES = {".DS_Store"}
 EXCLUDED_SUFFIXES = {".pyc", ".pyo"}
+
+# Windows os.stat() never reports the exec bit on .py files, so there the git
+# index (core.fileMode=false) is the only record of which scripts are 100755.
+FILESYSTEM_TRACKS_EXEC_BIT = os.name != "nt"
+
+# Manifest required for every skill with executable scripts (issue #330).
+# Presence is enforced here; content is enforced by check_skill_deps.py.
+REQUIREMENTS_FILE = "requirements.txt"
 
 
 def should_include(relative_path: Path) -> bool:
@@ -51,12 +64,66 @@ def iter_package_files(skill_dir: Path) -> list[Path]:
     )
 
 
-def _zip_info(archive_name: str, source_path: Path) -> ZipInfo:
+@functools.cache
+def _git_executable_paths(directory: Path) -> frozenset[Path]:
+    """Resolved paths under ``directory`` that the git index records as 100755.
+
+    Empty when git is unavailable or ``directory`` is not inside a work tree.
+    """
+    try:
+        listing = subprocess.run(
+            ["git", "ls-files", "-s", "-z", "--", "."],
+            cwd=directory,
+            capture_output=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return frozenset()
+    executables = set()
+    for entry in listing.split(b"\0"):
+        meta, _, name = entry.partition(b"\t")
+        if meta.startswith(b"100755 "):
+            executables.add((directory / os.fsdecode(name)).resolve())
+    return frozenset(executables)
+
+
+def _file_mode(source_path: Path, skill_dir: Path) -> int:
+    """Permission bits to record for ``source_path`` in the archive."""
+    mode = source_path.stat().st_mode & 0o777
+    if not FILESYSTEM_TRACKS_EXEC_BIT and source_path.resolve() in _git_executable_paths(
+        skill_dir.resolve()
+    ):
+        mode |= 0o111
+    return mode
+
+
+def _zip_info(archive_name: str, source_path: Path, skill_dir: Path) -> ZipInfo:
     info = ZipInfo(archive_name, FIXED_ZIP_DATE)
     info.compress_type = ZIP_DEFLATED
-    mode = source_path.stat().st_mode
-    info.external_attr = (mode & 0o777) << 16
+    info.external_attr = _file_mode(source_path, skill_dir) << 16
     return info
+
+
+def _has_executable_scripts(skill_dir: Path) -> bool:
+    """True when the skill ships packaged Python (mirrors check_skill_deps)."""
+    scripts_dir = skill_dir / "scripts"
+    if not scripts_dir.is_dir():
+        return False
+    return any(
+        path.is_file()
+        and path.name != "__init__.py"
+        and "tests" not in path.relative_to(scripts_dir).parts
+        for path in scripts_dir.rglob("*.py")
+    )
+
+
+def _require_dependency_manifest(skill_dir: Path) -> None:
+    """Fail closed when an executable skill declares no dependencies."""
+    if _has_executable_scripts(skill_dir) and not (skill_dir / REQUIREMENTS_FILE).is_file():
+        raise ValueError(
+            f"Missing {REQUIREMENTS_FILE} in {skill_dir} "
+            "(every executable skill must declare runtime dependencies; see issue #330)"
+        )
 
 
 def package_skill(skill_dir: Path, output_dir: Path, *, dry_run: bool = False) -> Path:
@@ -68,6 +135,7 @@ def package_skill(skill_dir: Path, output_dir: Path, *, dry_run: bool = False) -
         raise FileNotFoundError(f"Skill directory not found: {skill_dir}")
     if not (skill_dir / "SKILL.md").is_file():
         raise FileNotFoundError(f"Missing SKILL.md in {skill_dir}")
+    _require_dependency_manifest(skill_dir)
 
     files = iter_package_files(skill_dir)
     if not files:
@@ -84,7 +152,9 @@ def package_skill(skill_dir: Path, output_dir: Path, *, dry_run: bool = False) -
             for source_path in files:
                 rel = source_path.relative_to(skill_dir)
                 archive_name = f"{skill_dir.name}/{rel.as_posix()}"
-                archive.writestr(_zip_info(archive_name, source_path), source_path.read_bytes())
+                archive.writestr(
+                    _zip_info(archive_name, source_path, skill_dir), source_path.read_bytes()
+                )
         os.replace(tmp_path, output_path)
     finally:
         if tmp_path.exists():
@@ -100,11 +170,16 @@ def _source_logical_contents(skill_dir: Path) -> dict[str, tuple[bytes, bool]]:
     for source_path in iter_package_files(skill_dir):
         rel = source_path.relative_to(skill_dir)
         name = f"{skill_dir.name}/{rel.as_posix()}"
-        contents[name] = (source_path.read_bytes(), bool(source_path.stat().st_mode & 0o111))
+        contents[name] = (
+            source_path.read_bytes(),
+            bool(_file_mode(source_path, skill_dir) & 0o111),
+        )
     return contents
 
 
-def _archive_logical_contents(archive_path: Path) -> dict[str, tuple[bytes, bool]]:
+def _archive_logical_contents(
+    archive_path: Path, expected_skill: str
+) -> dict[str, tuple[bytes, bool]]:
     """Logical contents of a committed .skill: name -> (uncompressed bytes, exec bit).
 
     Compares logical content (not raw ZIP_DEFLATED bytes) so the gate does not
@@ -113,17 +188,51 @@ def _archive_logical_contents(archive_path: Path) -> dict[str, tuple[bytes, bool
     contents: dict[str, tuple[bytes, bool]] = {}
     with ZipFile(archive_path) as archive:
         for info in archive.infolist():
+            name = info.filename
+            parts = name.split("/")
+            if (
+                name in contents
+                or info.is_dir()
+                or "\\" in name
+                or any(ord(char) < 32 or ord(char) == 127 for char in name)
+                or len(parts) < 2
+                or parts[0] != expected_skill
+                or any(part in {"", ".", ".."} for part in parts)
+                or stat.S_IFMT(info.external_attr >> 16) not in (0, stat.S_IFREG)
+            ):
+                raise ValueError(f"Unsafe or duplicate archive member: {name!r}")
             exec_bit = bool((info.external_attr >> 16) & 0o111)
-            contents[info.filename] = (archive.read(info.filename), exec_bit)
+            try:
+                data = archive.read(info)
+            except (
+                RuntimeError,
+                NotImplementedError,
+                EOFError,
+                zlib.error,
+                lzma.LZMAError,
+            ) as exc:
+                raise ValueError(f"Unreadable archive member: {name!r}") from exc
+            contents[name] = (data, exec_bit)
     return contents
 
 
 def check_skill(skill_dir: Path, output_dir: Path) -> bool:
     """Return True when the committed .skill matches what packaging would produce."""
+    try:
+        _require_dependency_manifest(skill_dir.resolve())
+    except ValueError as exc:
+        print(f"DRIFT: {skill_dir.resolve().name}: {exc}")
+        return False
     archive_path = output_dir.resolve() / f"{skill_dir.resolve().name}.skill"
     if not archive_path.is_file():
         return False
-    return _source_logical_contents(skill_dir) == _archive_logical_contents(archive_path)
+    try:
+        return _source_logical_contents(skill_dir) == _archive_logical_contents(
+            archive_path, skill_dir.resolve().name
+        )
+    except (BadZipFile, OSError, ValueError) as exc:
+        print(f"DRIFT: {archive_path}: {exc}")
+        return False
 
 
 def discover_skill_dirs(skills_dir: Path) -> list[Path]:

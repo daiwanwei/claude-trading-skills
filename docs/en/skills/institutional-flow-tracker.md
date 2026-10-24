@@ -219,5 +219,6 @@ Read the references for interpretation guidance:
 
 - `skills/institutional-flow-tracker/scripts/analyze_single_stock.py`
 - `skills/institutional-flow-tracker/scripts/data_quality.py`
+- `skills/institutional-flow-tracker/scripts/fmp_client.py`
 - `skills/institutional-flow-tracker/scripts/track_institution_portfolio.py`
 - `skills/institutional-flow-tracker/scripts/track_institutional_flow.py`

@@ -82,7 +82,7 @@ Example user requests:
 python3 pair-trade-screener/scripts/find_pairs.py --sector Technology
 
 # Analyze specific pair
-python3 pair-trade-screener/scripts/analyze_spread.py AAPL MSFT
+python3 pair-trade-screener/scripts/analyze_spread.py --stock-a AAPL --stock-b MSFT
 
 # Custom cointegration parameters
 python3 pair-trade-screener/scripts/find_pairs.py \

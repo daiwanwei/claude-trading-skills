@@ -14,7 +14,7 @@
 
 ## Local validation / ローカル検証
 
-- [ ] Targeted tests passed with `python3.9 -m pytest <target> -q` (or the repository-compatible Python noted below). / 対象テストが通過しました。
+- [ ] Targeted tests passed with `python3.10 -m pytest <target> -q` (or the repository-compatible Python noted below). / 対象テストが通過しました。
 - [ ] The full skill suite passed with `bash scripts/run_all_tests.sh`, or N/A is explained below. / 全skill testまたはN/A理由を記録しました。
 - [ ] `ruff check skills/ scripts/` passed. / lintが通過しました。
 - [ ] `ruff format --check skills/ scripts/` passed. / format checkが通過しました。
@@ -34,14 +34,16 @@ Mark non-applicable items as N/A and explain them under reviewer notes. / 非該
 - [ ] Skill docs passed `python3 scripts/generate_skill_docs.py --check`. / skill文書のdriftを確認しました。
 - [ ] Workflow docs passed `python3 scripts/generate_workflow_docs.py --check`. / workflow文書のdriftを確認しました。
 - [ ] Skillset docs passed `python3 scripts/generate_skillset_docs.py --check`. / skillset文書のdriftを確認しました。
-- [ ] README/catalog output passed `python3 scripts/generate_catalog_from_index.py --check`. / catalogのdriftを確認しました。
+- [ ] README/CLAUDE catalog output passed `python3 scripts/generate_catalog_from_index.py --check`. / README・CLAUDE catalogのdriftを確認しました。
+- [ ] Website EN/JA skill catalogs passed `python3 scripts/check_skill_catalog.py`. / Webサイト英日skill catalogのcanonical dataを確認しました。
 - [ ] Navigator snapshot passed `python3 skills/trading-skills-navigator/scripts/build_snapshot.py --check`. / navigator snapshotを確認しました。
 - [ ] Vendored FMP clients passed `python3 scripts/generate_fmp_client.py --check`. / FMP clientのdriftを確認しました。
 - [ ] Changed skill packages passed `python3 scripts/check_package_drift_for_changed_skills.py`. / 変更skillのpackage driftを確認しました。
+- [ ] FMP provider response contracts passed `python3 scripts/check_provider_contracts.py check`. / FMP providerの応答契約を確認しました。
 - [ ] FMP package mirrors passed the repository CI command below. / FMP package mirrorのdriftを確認しました。
 
 ```bash
-python3 scripts/package_skills.py --check --skill pead-screener --skill earnings-trade-analyzer --skill ibd-distribution-day-monitor --skill vcp-screener --skill parabolic-short-trade-planner --skill ftd-detector --skill canslim-screener --skill macro-regime-detector --skill market-top-detector
+python3 scripts/package_skills.py --check --skill pead-screener --skill earnings-trade-analyzer --skill ibd-distribution-day-monitor --skill vcp-screener --skill parabolic-short-trade-planner --skill ftd-detector --skill canslim-screener --skill macro-regime-detector --skill market-top-detector --skill us-undervalued-growth-screener --skill earnings-calendar --skill economic-calendar-fetcher --skill institutional-flow-tracker --skill cot-contrarian-detector --skill value-dividend-screener --skill dividend-growth-pullback-screener --skill kanchi-dividend-sop
 ```
 
 ## Reviewer notes and N/A reasons / レビュー補足・N/A理由

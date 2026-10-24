@@ -55,13 +55,37 @@ their optimized `.set`.
 ### Step 1 — Configure
 
 Copy `assets/pipeline_config.template.json`, fill in the three folder paths and
-(optionally) `terminal_path`. Never commit real personal paths — pass the config
-at run time. Defaults already encode the agreed settings (2020.01.01→2026.06.30,
-H1, Model=4, 10000 USD, 1:100, gates and thresholds).
+set `terminal_path` to an explicit `terminal64.exe` path. For actual tester execution, a terminal path is
+**required** unless you opt into discovery when no path is supplied. Pass it via
+`--terminal-path`, config `terminal_path`, or `$MT5_TERMINAL_PATH`.
+`--dry-run` generates INIs without resolving or launching a terminal and needs
+no terminal path. Never commit real personal paths — pass the config at run
+time. Defaults already encode the agreed settings (2020.01.01→2026.06.30, H1,
+Model=4, 10000 USD, 1:100, gates and thresholds).
+
+> **Terminal selection is opt-in.** For safety, the pipeline never auto-discovers
+> `terminal64.exe` under Program Files. On a machine that also trades live, the
+> auto-detected terminal is often the broker's **live** terminal; the generated
+> INI has no `Login`, so it wakes on whatever account was last used, and
+> `ShutdownTerminal=1` closes it at the end. To avoid silently borrowing (and
+> closing) a live terminal, pass an explicit path to a **portable, tester-only
+> install** (a `/portable` folder with its own data directory). If you
+> explicitly accept the risk, `--allow-auto-detect` restores Program Files
+> discovery only when no `--terminal-path` / `$MT5_TERMINAL_PATH` /
+> `config.terminal_path` is set.
+
+> **Migration from the old precedence/fallback behavior:** selection now uses
+> `--terminal-path > config.terminal_path > MT5_TERMINAL_PATH`; config outranks
+> the environment variable. The highest-precedence supplied path must exist:
+> a missing path is a hard error, with no fallback even with `--allow-auto-detect`.
+> For example, a stale `config.terminal_path` blocks a valid `MT5_TERMINAL_PATH`.
+> Fix or remove the stale config setting, or override it with a valid CLI path.
+> Auto-detection is opt-in and applies only when no path is supplied.
 
 ### Step 2 — Dry-run (optional)
 
-Verify the generated Round-1 INIs without launching MT5:
+Verify the generated Round-1 INIs without resolving or launching MT5. No
+terminal path or installed MT5 is required for this offline dry-run:
 
 ```bash
 python3 skills/mt5-robot-tester/scripts/mt5_batch_tester.py \
@@ -72,7 +96,8 @@ python3 skills/mt5-robot-tester/scripts/mt5_batch_tester.py \
 
 ```bash
 python3 skills/mt5-robot-tester/scripts/mt5_batch_tester.py \
-  --config my_config.json --output-dir reports/mt5_pipeline
+  --config my_config.json --output-dir reports/mt5_pipeline \
+  --terminal-path "C:\Program Files\MetaTrader 5\tester\terminal64.exe"
 ```
 
 Each bot flows R1 → R2 → R3 → finalist decision. Progress is written to
@@ -82,7 +107,8 @@ Each bot flows R1 → R2 → R3 → finalist decision. Progress is written to
 
 ```bash
 python3 skills/mt5-robot-tester/scripts/mt5_batch_tester.py \
-  --config my_config.json --output-dir reports/mt5_pipeline --resume
+  --config my_config.json --output-dir reports/mt5_pipeline --resume \
+  --terminal-path "C:\Program Files\MetaTrader 5\tester\terminal64.exe"
 ```
 
 `--resume` skips completed bots and reuses finished rounds only while the

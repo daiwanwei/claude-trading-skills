@@ -121,7 +121,7 @@ def test_inputs_from_passes_ordered():
     ]
 
 
-def test_find_terminal_prefers_environment_over_config(tmp_path, monkeypatch):
+def test_find_terminal_prefers_config_over_environment(tmp_path, monkeypatch):
     env_terminal = tmp_path / "env" / "terminal64.exe"
     config_terminal = tmp_path / "config" / "terminal64.exe"
     env_terminal.parent.mkdir()
@@ -130,7 +130,177 @@ def test_find_terminal_prefers_environment_over_config(tmp_path, monkeypatch):
     config_terminal.touch()
     monkeypatch.setenv("MT5_TERMINAL_PATH", str(env_terminal))
 
-    assert batch.find_terminal(configured=str(config_terminal)) == env_terminal
+    assert batch.find_terminal(configured=str(config_terminal)) == config_terminal
+
+
+def _program_files_terminal(tmp_path, monkeypatch):
+    """Create a Program Files layout with an existing terminal64.exe and point
+    ``ProgramFiles`` env at it, so ``auto_candidates()`` yields a real candidate."""
+    base = tmp_path / "ProgramFiles"
+    terminal = base / "MetaTrader 5" / "terminal64.exe"
+    terminal.parent.mkdir(parents=True)
+    terminal.touch()
+    monkeypatch.setenv("ProgramFiles", str(base))
+    monkeypatch.delenv("ProgramFiles(x86)", raising=False)
+    return terminal
+
+
+def test_find_terminal_auto_off_returns_none_even_when_candidate_exists(tmp_path, monkeypatch):
+    _program_files_terminal(tmp_path, monkeypatch)
+    assert batch.find_terminal() is None
+
+
+def test_find_terminal_auto_on_finds_program_files_candidate(tmp_path, monkeypatch):
+    terminal = _program_files_terminal(tmp_path, monkeypatch)
+    assert batch.find_terminal(allow_auto=True) == terminal
+
+
+def test_find_terminal_explicit_missing_does_not_auto_detect(tmp_path, monkeypatch):
+    _program_files_terminal(tmp_path, monkeypatch)
+    assert (
+        batch.find_terminal(explicit=str(tmp_path / "missing" / "terminal64.exe"), allow_auto=True)
+        is None
+    )
+
+
+def test_find_terminal_explicit_missing_does_not_fall_through_to_env(tmp_path, monkeypatch):
+    valid_env = tmp_path / "env" / "terminal64.exe"
+    valid_env.parent.mkdir(parents=True)
+    valid_env.touch()
+    monkeypatch.setenv("MT5_TERMINAL_PATH", str(valid_env))
+    assert (
+        batch.find_terminal(explicit=str(tmp_path / "missing" / "terminal64.exe"), allow_auto=True)
+        is None
+    )
+
+
+def test_find_terminal_config_missing_does_not_fall_through_to_env(tmp_path, monkeypatch):
+    valid_env = tmp_path / "env" / "terminal64.exe"
+    valid_env.parent.mkdir(parents=True)
+    valid_env.touch()
+    monkeypatch.setenv("MT5_TERMINAL_PATH", str(valid_env))
+    assert (
+        batch.find_terminal(
+            configured=str(tmp_path / "missing" / "terminal64.exe"), allow_auto=True
+        )
+        is None
+    )
+
+
+def test_find_terminal_env_missing_does_not_auto_detect(tmp_path, monkeypatch):
+    _program_files_terminal(tmp_path, monkeypatch)
+    monkeypatch.setenv("MT5_TERMINAL_PATH", str(tmp_path / "missing" / "terminal64.exe"))
+    assert batch.find_terminal(allow_auto=True) is None
+
+
+def test_find_terminal_auto_on_returns_none_when_no_program_files_candidate(tmp_path, monkeypatch):
+    monkeypatch.setenv("ProgramFiles", str(tmp_path / "empty"))
+    monkeypatch.delenv("ProgramFiles(x86)", raising=False)
+    assert batch.find_terminal(allow_auto=True) is None
+
+
+def test_supplied_terminal_sources_orders_config_before_env(monkeypatch):
+    monkeypatch.setenv("MT5_TERMINAL_PATH", "C:/env/terminal64.exe")
+    assert batch.supplied_terminal_sources(
+        "C:/explicit/terminal64.exe", "C:/cfg/terminal64.exe"
+    ) == [
+        "C:/explicit/terminal64.exe",
+        "C:/cfg/terminal64.exe",
+        "C:/env/terminal64.exe",
+    ]
+    assert batch.supplied_terminal_sources(None, "C:/cfg/terminal64.exe") == [
+        "C:/cfg/terminal64.exe",
+        "C:/env/terminal64.exe",
+    ]
+
+
+def _bot_config(tmp_path, monkeypatch=None):
+    candidates = tmp_path / "MQL5" / "Experts" / "candidates"
+    candidates.mkdir(parents=True)
+    (candidates / "A.ex5").write_bytes(b"a")
+    config = tmp_path / "config.json"
+    config.write_text(
+        json.dumps(
+            {
+                "folders": {
+                    "candidates": str(candidates),
+                    "in_testing": str(tmp_path / "in-testing"),
+                    "finalists": str(tmp_path / "finalists"),
+                },
+                "common": {"symbols": ["EURUSD"]},
+            }
+        ),
+        encoding="utf-8",
+    )
+    return config
+
+
+def test_main_refuses_no_terminal_auto_off_and_lists_candidates(tmp_path, monkeypatch, capsys):
+    terminal = _program_files_terminal(tmp_path, monkeypatch)
+    config = _bot_config(tmp_path)
+    result = main(["--config", str(config), "--output-dir", str(tmp_path / "output")])
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "auto-detection is disabled for safety" in captured.err
+    assert str(terminal) in captured.err
+
+
+def test_main_refuses_specified_missing_even_with_auto_detect(tmp_path, monkeypatch, capsys):
+    _program_files_terminal(tmp_path, monkeypatch)
+    config = _bot_config(tmp_path)
+    result = main(
+        [
+            "--config",
+            str(config),
+            "--output-dir",
+            str(tmp_path / "output"),
+            "--terminal-path",
+            str(tmp_path / "missing" / "terminal64.exe"),
+            "--allow-auto-detect",
+        ]
+    )
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "was not found and will not fall back to another source" in captured.err
+
+
+@pytest.mark.parametrize("source", ["--terminal-path", "config.terminal_path", "MT5_TERMINAL_PATH"])
+def test_main_missing_terminal_reports_winning_source_without_fallback(
+    tmp_path, monkeypatch, capsys, source
+):
+    existing = _program_files_terminal(tmp_path, monkeypatch)
+    config = _bot_config(tmp_path)
+    missing = str(tmp_path / "missing folder" / "terminal64.exe")
+    cfg = json.loads(config.read_text(encoding="utf-8"))
+    args = [
+        "--config",
+        str(config),
+        "--output-dir",
+        str(tmp_path / "output"),
+        "--allow-auto-detect",
+    ]
+    if source == "--terminal-path":
+        args.extend(["--terminal-path", missing])
+        cfg["terminal_path"] = str(existing)
+        monkeypatch.setenv("MT5_TERMINAL_PATH", str(existing))
+    elif source == "config.terminal_path":
+        cfg["terminal_path"] = missing
+        monkeypatch.setenv("MT5_TERMINAL_PATH", str(existing))
+    else:
+        monkeypatch.setenv("MT5_TERMINAL_PATH", missing)
+    config.write_text(json.dumps(cfg), encoding="utf-8")
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Missing supplied path must never discover or launch a terminal")
+
+    monkeypatch.setattr(batch, "auto_candidates", forbidden)
+    monkeypatch.setattr(batch.subprocess, "Popen", forbidden)
+    assert main(args) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert f"Selected {source}: {missing!r}" in captured.err
+    assert "will not fall back" in captured.err
+    assert not (tmp_path / "output" / "state.json").exists()
 
 
 # --- finalist decision ---------------------------------------------------
@@ -251,7 +421,18 @@ def test_backtest_ini_optimization_0_with_inputs(tmp_path):
     assert "StopLossCoef1=1" in ini
 
 
-def test_dry_run_generates_per_symbol_backtests_with_relative_reports(tmp_path):
+@pytest.mark.parametrize("supplied_path", [False, True])
+def test_dry_run_generates_per_symbol_backtests_with_relative_reports(
+    tmp_path, monkeypatch, supplied_path
+):
+    monkeypatch.delenv("MT5_TERMINAL_PATH", raising=False)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Dry-run must not resolve or launch a terminal")
+
+    monkeypatch.setattr(batch, "find_terminal", forbidden)
+    monkeypatch.setattr(batch, "auto_candidates", forbidden)
+    monkeypatch.setattr(batch.subprocess, "Popen", forbidden)
     candidates = tmp_path / "MQL5" / "Experts" / "candidates"
     candidates.mkdir(parents=True)
     (candidates / "Bot.ex5").write_bytes(b"")
@@ -267,7 +448,10 @@ def test_dry_run_generates_per_symbol_backtests_with_relative_reports(tmp_path):
     )
     output = tmp_path / "output"
 
-    assert main(["--config", str(config), "--output-dir", str(output), "--dry-run"]) == 0
+    args = ["--config", str(config), "--output-dir", str(output), "--dry-run"]
+    if supplied_path:
+        args.extend(["--terminal-path", str(tmp_path / "missing" / "terminal64.exe")])
+    assert main(args) == 0
 
     inis = sorted((output / "mt5_ini").glob("*.ini"))
     assert [path.name for path in inis] == [
@@ -288,7 +472,15 @@ def test_lock_takes_over_stale_pid(tmp_path):
     lock.write_text("999999999")
     handle = acquire_lock(lock)
     assert handle is not None
-    assert lock.read_text().strip() == str(os.getpid())
+    if sys.platform == "win32":
+        # The msvcrt byte lock is mandatory on Windows, so a second handle
+        # cannot read the file while it is held; read through the owner.
+        handle.seek(0)
+        assert handle.read().decode().strip() == str(os.getpid())
+    else:
+        # An independent reader proves the PID is flushed where another
+        # process checking for a stale lock can see it.
+        assert lock.read_text().strip() == str(os.getpid())
     release_lock(handle)
 
 
@@ -529,7 +721,9 @@ def test_main_stops_after_first_bot_when_terminal_exit_is_unconfirmed(tmp_path, 
             return None
 
     monkeypatch.setattr(
-        batch, "find_terminal", lambda _explicit, _configured: tmp_path / "terminal64.exe"
+        batch,
+        "find_terminal",
+        lambda _explicit, _configured, _allow_auto: tmp_path / "terminal64.exe",
     )
     monkeypatch.setattr(
         batch.subprocess,
@@ -583,7 +777,9 @@ def test_fatal_blocker_survives_output_reporting_failure(tmp_path, monkeypatch, 
             return None
 
     monkeypatch.setattr(
-        batch, "find_terminal", lambda _explicit, _configured: tmp_path / "terminal64.exe"
+        batch,
+        "find_terminal",
+        lambda _explicit, _configured, _allow_auto: tmp_path / "terminal64.exe",
     )
     monkeypatch.setattr(batch.subprocess, "Popen", lambda _cmd: Proc())
     monkeypatch.setattr(batch, "terminate_child_process", lambda _proc: False)
@@ -656,7 +852,9 @@ def test_main_processes_all_bots_but_returns_nonzero_when_any_bot_fails(tmp_path
         return state
 
     monkeypatch.setattr(
-        batch, "find_terminal", lambda _explicit, _configured: tmp_path / "terminal64.exe"
+        batch,
+        "find_terminal",
+        lambda _explicit, _configured, _allow_auto: tmp_path / "terminal64.exe",
     )
     monkeypatch.setattr(Pipeline, "process_bot", fail_bot)
 
@@ -703,7 +901,9 @@ def test_main_persists_each_bots_learnings_before_the_next_bot(tmp_path, monkeyp
         return state
 
     monkeypatch.setattr(
-        batch, "find_terminal", lambda _explicit, _configured: tmp_path / "terminal64.exe"
+        batch,
+        "find_terminal",
+        lambda _explicit, _configured, _allow_auto: tmp_path / "terminal64.exe",
     )
     monkeypatch.setattr(Pipeline, "process_bot", interrupt_after_first)
 

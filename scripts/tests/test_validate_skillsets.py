@@ -1,7 +1,7 @@
 """Skillset validator tests — happy path + one failing case per SK code.
 
 Each test builds a minimal repo layout in tmp_path and asserts the validator
-emits the specific SK### code. A final test validates the 4 real shipped
+emits the specific SK### code. A final test validates the real shipped
 manifests against the real repo root (0 errors).
 """
 

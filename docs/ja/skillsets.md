@@ -24,6 +24,7 @@ permalink: /ja/skillsets/
 |---|---|---|---|---|
 | [`core-portfolio`](#core-portfolio) — Core Portfolio | weekly | mixed | beginner | `core-portfolio-weekly` |
 | [`market-regime`](#market-regime) — Market Regime | daily | no-api-basic | beginner | `market-regime-daily` |
+| [`strategy-research`](#strategy-research) — Strategy Research | research | no-api-basic | advanced | `strategy-research-pipeline` |
 | [`swing-opportunity`](#swing-opportunity) — Swing Opportunity | daily | fmp-required | intermediate | `swing-opportunity-daily` |
 | [`trade-memory`](#trade-memory) — Trade Memory | event-driven | no-api-basic | beginner | `trade-memory-loop`, `monthly-performance-review` |
 
@@ -66,6 +67,26 @@ permalink: /ja/skillsets/
 **任意スキル:** `breadth-chart-analyst`, `sector-analyst`, `market-environment-analysis`, `market-news-analyst`, `downtrend-duration-analyzer`, `us-market-bubble-detector`
 
 **関連ワークフロー:** `market-regime-daily`
+
+---
+
+## Strategy Research {#strategy-research}
+
+**`strategy-research`** · research · no-api-basic · advanced
+
+**使用するとき:** Research a long-side US equity idea from local historical observations: detect candidate tickets, refine them with hints, and evaluate separately measured backtest results. The strategy-research-pipeline workflow is an offline research path, not an end-to-end backtest runner.
+
+**使用してはいけないとき:** Do not use this bundle to place trades or treat its score as strategy approval. Stop before evaluation if the final ticket cannot be matched to complete, provenance-checked backtest metrics and bias evidence.
+
+**対象ユーザー:** `strategy-researcher`
+
+**必須スキル:** `edge-candidate-agent`, `edge-hint-extractor`, `backtest-expert`
+
+**推奨スキル:** （なし）
+
+**任意スキル:** `strategy-pivot-designer`
+
+**関連ワークフロー:** `strategy-research-pipeline`
 
 ---
 

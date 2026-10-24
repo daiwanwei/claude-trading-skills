@@ -11,7 +11,14 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.provider_contracts import _APIKEY_RE
+
 GENERATED_SKILLS = {
+    "value-dividend-screener",
+    "dividend-growth-pullback-screener",
+    "kanchi-dividend-sop",
     "pead-screener",
     "earnings-trade-analyzer",
     "ibd-distribution-day-monitor",
@@ -21,12 +28,36 @@ GENERATED_SKILLS = {
     "canslim-screener",
     "macro-regime-detector",
     "market-top-detector",
+    "us-undervalued-growth-screener",
+    # Issue #495 Batch A: calendars / simple GETs share the family-B core
+    # without the per-run API-call budget (their scripts never capped calls).
+    "earnings-calendar",
+    "economic-calendar-fetcher",
+    "institutional-flow-tracker",
+    "cot-contrarian-detector",
 }
 NO_COMPAT_SKILLS = {
+    "value-dividend-screener",
+    "dividend-growth-pullback-screener",
+    "kanchi-dividend-sop",
     "ftd-detector",
     "canslim-screener",
     "macro-regime-detector",
     "market-top-detector",
+    "us-undervalued-growth-screener",
+    # Batch A rows target /stable endpoints 1:1, so no v3→stable rewrite.
+    "economic-calendar-fetcher",
+    "institutional-flow-tracker",
+    "cot-contrarian-detector",
+}
+NO_BUDGET_FAMILY_B = {
+    "value-dividend-screener",
+    "dividend-growth-pullback-screener",
+    "kanchi-dividend-sop",
+    "earnings-calendar",
+    "economic-calendar-fetcher",
+    "institutional-flow-tracker",
+    "cot-contrarian-detector",
 }
 
 
@@ -48,7 +79,7 @@ def test_registry_has_expected_skills(gen):
     skills = _skills(gen)
     assert set(skills) == GENERATED_SKILLS
     for cfg in skills.values():
-        assert cfg.budget == (cfg.family == "B")
+        assert cfg.budget == (cfg.family == "B" and cfg.skill not in NO_BUDGET_FAMILY_B)
         assert cfg.has_compat == (cfg.skill not in NO_COMPAT_SKILLS)
         assert bool(cfg.standalone_template) == (cfg.family == "special")
 
@@ -69,10 +100,15 @@ def test_family_b_no_quote_has_budget(gen):
             continue
         out = gen.render_fmp_client(cfg)
         assert "def get_quote" not in out
-        assert '"quote"' not in out  # no quote entry in _FMP_ENDPOINTS
-        assert "class ApiCallBudgetExceeded(Exception):" in out
-        assert "max_api_calls: int = 200" in out
-        assert '"budget_remaining"' in out
+        assert '"quote": [' not in out  # no quote fallback entry in _FMP_ENDPOINTS
+        if cfg.skill in NO_BUDGET_FAMILY_B:
+            # Issue #495 Batch A: no per-run budget surface.
+            assert "ApiCallBudgetExceeded" not in out
+            assert "max_api_calls" not in out
+        else:
+            assert "class ApiCallBudgetExceeded(Exception):" in out
+            assert "max_api_calls: int = 200" in out
+            assert '"budget_remaining"' in out
 
 
 def test_family_a_has_quote_no_budget(gen):
@@ -226,3 +262,43 @@ def test_generated_output_is_ruff_clean(gen):
     assert fmt.returncode == 0, fmt.stdout + fmt.stderr
     chk = subprocess.run([ruff, "check", *files], capture_output=True, text=True)
     assert chk.returncode == 0, chk.stdout + chk.stderr
+
+
+def test_generated_output_redacts_apikey_in_stderr(gen):
+    """Every rendered client masks apikey=/api_key= before printing (Issue #357).
+
+    The regex is duplicated verbatim (generated clients are standalone and cannot
+    import scripts/provider_contracts.py); this guards against the copies drifting
+    from the source of truth.
+    """
+    expected_pattern_literal = f'r"{_APIKEY_RE.pattern}"'
+    for cfg in _skills(gen).values():
+        out = gen.render_fmp_client(cfg)
+        assert "_redact_key(" in out, cfg.skill
+        assert expected_pattern_literal in out, cfg.skill
+
+
+def test_redaction_has_one_shared_template_definition(gen):
+    templates = [gen.SRC_DIR / "core_template.py.tmpl", *(gen.SRC_DIR / "specials").glob("*.tmpl")]
+    assert all("def _redact_secret" not in path.read_text() for path in templates)
+    fragment = (gen.SRC_DIR / "redaction.py.tmpl").read_text()
+    assert fragment.count("def _redact_secret") == 1
+    for cfg in _skills(gen).values():
+        assert gen.render_fmp_client(cfg).count(fragment.rstrip()) == 1
+
+
+def test_batch_b_timeout_option_is_scoped_to_new_targets(gen):
+    new_targets = {
+        "value-dividend-screener",
+        "dividend-growth-pullback-screener",
+        "kanchi-dividend-sop",
+    }
+    for skill, cfg in _skills(gen).items():
+        assert cfg.configurable_timeout is (skill in new_targets)
+        output = gen.render_fmp_client(cfg)
+        if skill in new_targets:
+            assert "timeout=self.timeout" in output
+            assert 'self.session.headers.update({"apikey": self.api_key})' in output
+        elif cfg.family != "special":
+            assert "timeout=self.timeout" not in output
+            assert "timeout=30" in output

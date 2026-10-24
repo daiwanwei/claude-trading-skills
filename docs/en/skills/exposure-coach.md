@@ -140,3 +140,19 @@ Map the posture recommendation to portfolio actions:
 **Scripts:**
 
 - `skills/exposure-coach/scripts/calculate_exposure.py`
+
+## Strict provenance for market-regime-daily
+
+Add `--require-provenance --run-id daily-20261017-unique
+--as-of 2026-10-17T13:00:00Z --max-age-days 3` to validate breadth and uptrend
+before scoring. Both producers must receive the same unique run ID; pass their
+exact printed JSON paths. `--as-of` is the timezone-aware evaluation instant,
+not an override of the source business date.
+
+The gate checks schema 1.0, expected run ID, UTC retrieval no later than evaluation,
+nonfuture source date and configured age. Default three calendar days is a
+conservative policy, not an exchange holiday calendar. Failure stops before
+report output. Successful output records accepted lineage and verification limits.
+Optional top-risk/other inputs and auxiliary summary dates remain outside this
+gate; unknown quality flags stay false. Legacy mode retains its existing schema.
+Run IDs are consistency markers, not authenticity or point-in-time proof.

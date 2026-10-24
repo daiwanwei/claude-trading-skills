@@ -100,3 +100,17 @@ Present the generated Markdown report to the user, highlighting:
 - `skills/uptrend-analyzer/scripts/report_generator.py`
 - `skills/uptrend-analyzer/scripts/scorer.py`
 - `skills/uptrend-analyzer/scripts/uptrend_analyzer.py`
+
+## Same-run provenance
+
+Pass `--run-id daily-20261017-unique` to both required market-regime-daily
+producers. Without it each producer generates its own unique ID. JSON includes
+schema 1.0 `data_provenance` with actual primary timeseries business date,
+UTC retrieval time, source and run ID. Unknown adjustment, point-in-time,
+survivorship and corporate-action flags are false. Auxiliary summary dates
+are unverified; this does not certify the freshness of every composite input.
+Missing or malformed primary dates stop report generation.
+
+Pass the exact JSON paths printed by these invocations to Exposure Coach's
+`--require-provenance --run-id … --as-of …` mode. Run IDs are caller-provided
+consistency markers, not authenticity or point-in-time proof.

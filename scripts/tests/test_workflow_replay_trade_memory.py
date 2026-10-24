@@ -42,15 +42,24 @@ def test_trade_memory_spec_has_honest_executor_evidence() -> None:
     }
 
 
-def test_coverage_advances_to_three_of_eleven() -> None:
+def test_coverage_includes_trade_memory_at_twelve_of_twelve() -> None:
     summary = replay_module.validate_coverage(ROOT, COVERAGE)
 
     assert summary["covered"] == [
+        "core-portfolio-weekly",
+        "kanchi-dividend-weekly",
+        "market-regime-daily",
+        "monthly-performance-review",
+        "multi-asset-opportunity-daily",
+        "shapiro-contrarian",
         "stockbee-20pct-study-daily",
+        "stockbee-ep-daily",
         "stockbee-fluency-loop",
+        "strategy-research-pipeline",
+        "swing-opportunity-daily",
         "trade-memory-loop",
     ]
-    assert len(summary["deferred"]) == 8
+    assert len(summary["deferred"]) == 0
     assert "trade-memory-loop" not in summary["deferred"]
 
 
@@ -440,10 +449,28 @@ def test_generate_stages_all_covered_goldens_without_publishing(
     monkeypatch.setattr(replay_module, "_publish_trees_transactionally", capture_publication)
     result = generate_goldens(ROOT, COVERAGE)
     assert result["generated"] == [
+        "core-portfolio-weekly:required-only",
+        "core-portfolio-weekly:full-path",
+        "kanchi-dividend-weekly:required-only",
+        "kanchi-dividend-weekly:full-path",
+        "market-regime-daily:required-only",
+        "market-regime-daily:full-path",
+        "monthly-performance-review:required-only",
+        "monthly-performance-review:full-path",
+        "multi-asset-opportunity-daily:required-only",
+        "multi-asset-opportunity-daily:full-path",
+        "shapiro-contrarian:required-only",
+        "shapiro-contrarian:full-path",
         "stockbee-20pct-study-daily:required-only",
         "stockbee-20pct-study-daily:full-path",
+        "stockbee-ep-daily:required-only",
+        "stockbee-ep-daily:full-path",
         "stockbee-fluency-loop:required-only",
         "stockbee-fluency-loop:full-path",
+        "strategy-research-pipeline:required-only",
+        "strategy-research-pipeline:full-path",
+        "swing-opportunity-daily:required-only",
+        "swing-opportunity-daily:full-path",
         "trade-memory-loop:required-only",
         "trade-memory-loop:full-path",
     ]
@@ -452,6 +479,24 @@ def test_generate_stages_all_covered_goldens_without_publishing(
         "sample-run-full-path",
         "sample-run",
         "sample-run-full-path",
+        "sample-run",
+        "sample-run-full-path",
+        "replay-run",
+        "replay-run-full-path",
+        "replay-run",
+        "replay-run-full-path",
+        "replay-run",
+        "replay-run-full-path",
+        "sample-run",
+        "sample-run-full-path",
+        "replay-run",
+        "replay-run-full-path",
+        "sample-run",
+        "sample-run-full-path",
+        "replay-run",
+        "replay-run-full-path",
+        "replay-run",
+        "replay-run-full-path",
         "sample-run",
         "sample-run-full-path",
     ]

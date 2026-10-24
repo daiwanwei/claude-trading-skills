@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import shutil
@@ -33,19 +34,146 @@ COVERAGE = ROOT / "examples" / "workflows" / "replay-coverage.yaml"
 SPEC = ROOT / "examples" / "workflows" / "stockbee-fluency-loop" / "replay.yaml"
 
 
-def test_coverage_is_complete_and_three_of_eleven_deferrals_are_frozen() -> None:
+@pytest.mark.parametrize("overlapping_spelling", [False, True])
+def test_canonicalize_symlink_path_spellings(tmp_path: Path, overlapping_spelling: bool) -> None:
+    alias = tmp_path.resolve() / "repo with spaces"
+    # Emulate /tmp being a substring of /private/tmp on every platform.
+    real = (
+        tmp_path / "private" / alias.relative_to(alias.anchor)
+        if overlapping_spelling
+        else tmp_path / "real repo"
+    )
+    real.mkdir(parents=True)
+    try:
+        alias.symlink_to(real, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks unavailable: {exc}")
+    suffix = "skills/demo/SKILL.md"
+    sibling = str(alias.with_name("repo with spaces-other")) + "/" + suffix
+    payload = {
+        "paths": [str(alias) + "/" + suffix, {"path": str(real) + "/" + suffix}],
+        "diagnostic": f"Read '{alias}/{suffix}' and '{real}/{suffix}'",
+        "outside": sibling,
+    }
+
+    canonical = replay_module._canonicalize(payload, "2026-05-31T23:59:59Z", {str(alias) + "/": ""})
+
+    assert canonical == {
+        "paths": [suffix, {"path": suffix}],
+        "diagnostic": f"Read '{suffix}' and '{suffix}'",
+        "outside": sibling,
+    }
+
+
+@pytest.mark.parametrize("alias_first", [False, True])
+def test_canonicalize_rejects_conflicting_symlink_replacements(
+    tmp_path: Path, alias_first: bool
+) -> None:
+    real = tmp_path / "real repo"
+    real.mkdir()
+    alias = tmp_path / "repo alias"
+    try:
+        alias.symlink_to(real, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks unavailable: {exc}")
+
+    entries = (
+        [(str(alias), "$ALIAS"), (str(real), "$REAL")]
+        if alias_first
+        else [(str(real), "$REAL"), (str(alias), "$ALIAS")]
+    )
+    previous, current = ("$ALIAS", "$REAL") if alias_first else ("$REAL", "$ALIAS")
+    resolved_real = str(real.resolve())
+
+    with pytest.raises(ReplayError) as exc_info:
+        replay_module._canonicalize([str(alias), str(real)], "fixed", dict(entries))
+
+    assert str(exc_info.value) == (
+        f"conflicting path replacement for {resolved_real}: {previous} vs {current}"
+    )
+
+
+@pytest.mark.parametrize("replacement", ["$ROOT", ""])
+def test_canonicalize_allows_duplicate_symlink_replacements(
+    tmp_path: Path, replacement: str
+) -> None:
+    real = tmp_path / "real repo"
+    real.mkdir()
+    alias = tmp_path / "repo alias"
+    try:
+        alias.symlink_to(real, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks unavailable: {exc}")
+
+    canonical = replay_module._canonicalize(
+        [str(alias), str(real)],
+        "fixed",
+        {str(alias): replacement, str(real): replacement},
+    )
+
+    assert canonical == [replacement, replacement]
+
+
+@pytest.mark.parametrize("file_first", [False, True])
+def test_canonicalize_specific_files_before_parent_paths(tmp_path: Path, file_first: bool) -> None:
+    root = tmp_path.resolve()
+    source = root / "input.json"
+    entries = [(str(root) + "/", "$WORK/"), (str(source), "$INPUT/source.json")]
+    if file_first:
+        entries.reverse()
+
+    canonical = replay_module._canonicalize(
+        [str(source), str(root) + "/report.json"],
+        "2026-05-31T23:59:59Z",
+        dict(entries),
+    )
+
+    assert canonical == ["$INPUT/source.json", "$WORK/report.json"]
+
+
+def test_canonicalize_retains_literal_order_timestamps_and_non_string_values() -> None:
+    timestamp = "2026-05-31T23:59:59Z"
+    payload = {"generated_at": "old", "nested": ["value", 3, None, {"ok": True}]}
+
+    canonical = replay_module._canonicalize(
+        payload, timestamp, {"value": "longer literal", "longer literal": "done"}
+    )
+
+    assert canonical == {"generated_at": timestamp, "nested": ["done", 3, None, {"ok": True}]}
+    assert payload["generated_at"] == "old"
+
+
+def test_coverage_is_complete_and_twelve_of_twelve_are_covered() -> None:
     summary = validate_coverage(ROOT, COVERAGE)
 
     assert summary["covered"] == [
+        "core-portfolio-weekly",
+        "kanchi-dividend-weekly",
+        "market-regime-daily",
+        "monthly-performance-review",
+        "multi-asset-opportunity-daily",
+        "shapiro-contrarian",
         "stockbee-20pct-study-daily",
+        "stockbee-ep-daily",
         "stockbee-fluency-loop",
+        "strategy-research-pipeline",
+        "swing-opportunity-daily",
         "trade-memory-loop",
     ]
     assert set(summary["deferred"]) == FROZEN_DEFERRED_WORKFLOWS
-    assert len(summary["deferred"]) == 8
+    assert len(summary["deferred"]) == 0
     assert summary["variants"] == {
+        "core-portfolio-weekly": ["required-only", "full-path"],
+        "kanchi-dividend-weekly": ["required-only", "full-path"],
+        "market-regime-daily": ["required-only", "full-path"],
+        "monthly-performance-review": ["required-only", "full-path"],
+        "multi-asset-opportunity-daily": ["required-only", "full-path"],
+        "shapiro-contrarian": ["required-only", "full-path"],
         "stockbee-20pct-study-daily": ["required-only", "full-path"],
+        "stockbee-ep-daily": ["required-only", "full-path"],
         "stockbee-fluency-loop": ["required-only", "full-path"],
+        "strategy-research-pipeline": ["required-only", "full-path"],
+        "swing-opportunity-daily": ["required-only", "full-path"],
         "trade-memory-loop": ["required-only", "full-path"],
     }
 
@@ -59,10 +187,10 @@ def test_new_workflow_cannot_be_silently_deferred() -> None:
 
     coverage["deferred"]["new-workflow"] = {
         "issue": 294,
-        "reason": "Do not allow new coverage 3/11 deferrals.",
+        "reason": "Do not allow new coverage 12/12 deferrals.",
     }
     errors = coverage_errors(workflow_ids, coverage)
-    assert any("frozen coverage 3/11 deferred set" in error for error in errors)
+    assert any("frozen coverage 12/12 deferred set" in error for error in errors)
 
 
 def test_pilot_spec_matches_workflow_and_requires_offline_prices() -> None:
@@ -169,9 +297,9 @@ def test_generate_rejects_source_destination_without_deleting_existing_files(
 
     coverage = load_yaml(COVERAGE)
     coverage["covered"]["stockbee-fluency-loop"]["spec"] = "replay.yaml"
-    coverage["covered"]["stockbee-20pct-study-daily"]["spec"] = str(
-        ROOT / "examples/workflows/stockbee-20pct-study-daily/replay.yaml"
-    )
+    for workflow_id, entry in coverage["covered"].items():
+        if workflow_id != "stockbee-fluency-loop":
+            entry["spec"] = str(COVERAGE.parent / entry["spec"])
     coverage_path = tmp_path / "replay-coverage.yaml"
     coverage_path.write_text(yaml.safe_dump(coverage, sort_keys=False), encoding="utf-8")
     before[coverage_path.relative_to(tmp_path)] = coverage_path.read_bytes()
@@ -550,8 +678,36 @@ def test_check_writes_structured_report_when_executor_fails(
 
     assert any("injected execution failure" in difference for difference in differences)
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["coverage"] == {"covered": 12, "total": 12}
     assert report["rows"][0]["status"] == "error"
     assert report["rows"][0]["completed_steps"] == [1]
+
+
+def test_check_writes_fail_safe_report_when_coverage_validation_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_validation(*_args, **_kwargs):
+        raise ReplayError("injected coverage failure")
+
+    monkeypatch.setattr(replay_module, "validate_coverage", fail_validation)
+    report_path = tmp_path / "report.json"
+
+    differences = check_goldens(ROOT, COVERAGE, report_path)
+
+    assert differences == ["coverage validation error: injected coverage failure"]
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["coverage"] == {"covered": 0, "total": 12}
+    assert report["rows"] == [
+        {
+            "workflow_id": None,
+            "variant": None,
+            "status": "error",
+            "stage": "validation",
+            "error": "injected coverage failure",
+            "completed_steps": [],
+        }
+    ]
 
 
 @pytest.mark.parametrize(
@@ -577,3 +733,18 @@ def test_committed_goldens_are_reproducible_and_not_executor_inputs(
     regenerated = tmp_path / "regenerated"
     execute_replay(ROOT, SPEC, variant, regenerated)
     assert compare_trees(generated, regenerated) == []
+
+
+def test_replay_uses_supported_thesis_read_and_validation_api() -> None:
+    tree = ast.parse((ROOT / "scripts" / "workflow_replay.py").read_text(encoding="utf-8"))
+    private_names = {"_load_thesis", "_validate_thesis"}
+    violations = [
+        node.lineno
+        for node in ast.walk(tree)
+        if (isinstance(node, ast.Attribute) and node.attr in private_names)
+        or (
+            isinstance(node, ast.ImportFrom)
+            and any(alias.name in private_names for alias in node.names)
+        )
+    ]
+    assert violations == [], f"Replay depends on private thesis APIs at lines {violations}"

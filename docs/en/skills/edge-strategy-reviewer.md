@@ -62,6 +62,13 @@ python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
 python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
   --draft reports/edge_strategy_drafts/draft_xxx.yaml \
   --output-dir reports/ --format json --markdown-summary
+
+# Bias checklist (issue #297) — mandatory strategy-research bias gate.
+# A draft leaving any required item unaddressed is downgraded PASS → REVISE
+# and loses export eligibility.
+python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
+  --drafts-dir reports/edge_strategy_drafts/ \
+  --output-dir reports/ --bias-checklist
 ```
 
 ---
@@ -73,7 +80,8 @@ python3 skills/edge-strategy-reviewer/scripts/review_strategy_drafts.py \
 3. Compute confidence score (weighted average of all criteria)
 4. Determine verdict: PASS / REVISE / REJECT
 5. Assess export eligibility (PASS + export_ready_v1 + exportable family)
-6. Write review output (YAML or JSON) and optional markdown summary
+6. When `--bias-checklist` is set, score each draft against the versioned strategy-research bias checklist (issue #297); any required item not declared in the draft's `bias_checklist` block downgrades PASS → REVISE and clears export eligibility
+7. Write review output (YAML or JSON) and optional markdown summary
 
 ---
 

@@ -36,7 +36,10 @@
                 if row.get("Symbol")
             ]
         except (requests.exceptions.RequestException, csv.Error, KeyError) as e:
-            print(f"ERROR: constituents CSV fallback failed: {e}", file=sys.stderr)
+            print(
+                self._redact_secret(f"ERROR: constituents CSV fallback failed: {e}"),
+                file=sys.stderr,
+            )
             return None
         return data or None
 

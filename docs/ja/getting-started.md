@@ -27,6 +27,26 @@ Claude Trading Skillsのインストール方法、APIキーの設定、最初�
 
 ---
 
+## 出力プレビュー
+
+インストール前に確認できる架空データによる表示例です。ワークフロー提案、リスク確認、決済済み取引の振り返りを示します。現在の相場情報や売買指示ではありません。
+
+画像を選ぶと原寸のSVGを開けます。スマートフォンでは開いた後に拡大できます。
+
+[![架空の毎朝15分の確認目標に対し、必要な3スキルと有料API不要の経路を示すNavigatorの出力例]({{ '/assets/previews/navigator-recommendation.svg' | relative_url }})]({{ '/assets/previews/navigator-recommendation.svg' | relative_url }})
+
+**開始経路を探す:** [Trading Skills Navigator]({{ '/ja/skills/trading-skills-navigator/' | relative_url }})が目的に合うワークフローを提案します。
+
+[![架空のスコアから計算した上限36%、REDUCE_ONLY、重要入力不足によるLOWの信頼度を示す相場方針の出力例]({{ '/assets/previews/market-posture.svg' | relative_url }})]({{ '/assets/previews/market-posture.svg' | relative_url }})
+
+**日々の方針を確認する:** [市場レジーム日次ワークフロー]({{ '/ja/workflows/' | relative_url }})の最後に人間の判断ゲートがあります。
+
+[![架空の決済済み4取引を使い、勝率50%と実現損益プラス75ドルを示す週次振り返りの出力例]({{ '/assets/previews/weekly-digest.svg' | relative_url }})]({{ '/assets/previews/weekly-digest.svg' | relative_url }})
+
+**決済済み取引を振り返る:** [Weekly Performance Digest]({{ '/ja/skills/weekly-performance-digest/' | relative_url }})が成果と改善点を整理します。
+
+---
+
 ## 必要なもの
 
 > **実際に必要な費用:** Claude WebのSkillsは現在Free、Pro、Max、Team、
@@ -42,7 +62,7 @@ Claude Trading Skillsのインストール方法、APIキーの設定、最初�
 | 項目 | 必須/任意 | 説明 |
 |------|-----------|------|
 | Claudeアカウント | 必須 | Skillsを利用できるClaude Webアカウント、または別途利用条件を満たすClaude Codeアカウント |
-| Python 3.9+ | 必須 | スクリプト実行用。多くのスキルが Python ヘルパーを使用 |
+| Python 3.10+ | 必須 | 共有リポジトリ環境のスクリプト実行用。単体パッケージスキルは Python 3.9 をサポートする場合があります。多くのスキルが Python ヘルパーを使用 |
 | FMP APIキー | 任意 | Financial Modeling Prep API。一部スキルで必須（無料ティアあり） |
 | FINVIZ Elite | 任意 | 配当スクリーナーの高速化、Theme Detectorの精度向上に推奨 |
 | Alpacaアカウント | 任意 | Portfolio Managerスキルで保有データ取得に必要 |

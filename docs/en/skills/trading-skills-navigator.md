@@ -106,13 +106,26 @@ Parse the JSON and explain, in the user's language:
 - **Skillset** — the `skillset.id` (skills-index category). Note
   `manifest_status: deferred` means a bundled skillset manifest is a later
   phase; today the recommendation is workflow-based.
-- **No-API vs API** — if `no_api` is true, say it works without paid keys. If a
-  workflow was excluded under `--no-api`, surface the `rationale` entry that
-  explains which paid integration caused it (e.g. "swing-opportunity-daily
-  needs FMP").
-- **Honest gap** — if `honest_gap` is true there is **no shipped workflow** for
-  this intent. Say so directly, then present `suggested_skills` from the
-  relevant category and relay the `note`. Never invent a workflow.
+- **Goal availability** — read `goal_match.runnability` and its
+  `missing_requirements`. `eligible` means the metadata and stated constraints
+  permit the workflow; it does not prove input data is ready. `blocked` means
+  a matching workflow exists but cannot serve this request.
+- **No-API vs API** — read `no_api_path` for the requested goal. `null` means
+  there is no usable path. Explain any paid integration in
+  `missing_requirements`; do not treat request-side `no_api` as proof that a
+  portfolio review can run.
+- **Honest gap** — `honest_gap` means no usable path for the goal.
+  `goal_match.runnability: unshipped` means no dedicated workflow ships;
+  `blocked` means the matching workflow cannot run under this request. Present
+  `alternative_workflow` only as a different-goal on-ramp. CSV portfolio
+  review remains unavailable until #512 ships. Any CSV mention counts as
+  the portfolio source unless it is clearly an output (export/save/send) with
+  no input wording.
+- **Dropped secondaries** — under no-API mode, paid-API follow-on workflows
+  are removed and listed in `dropped_secondary_workflows` (`{id, reason}`).
+  Tell the user which steps were omitted; they do not block the goal.
+- **Operational roles** — explain each `operational_roles` entry for the
+  setup bundle or honest-gap suggestions, including standalone rationale.
 - Always read the `rationale` array and explain *why* this was recommended.
 
 ### Step 4 — Explain the setup path

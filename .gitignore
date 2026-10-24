@@ -14,6 +14,7 @@ __pycache__/
 .venv/
 venv/
 env/
+.venv-smoke-*/
 
 # Tool configurations
 .idea/
@@ -25,6 +26,9 @@ env/
 !.env.example
 .mcp.json
 config/daily-trading-routine.local.toml
+
+# Local provider/API caches. Never commit credentials or raw provider payloads.
+.cache/
 
 # Logs & temp
 logs/
@@ -56,6 +60,7 @@ scripts/weekly_portfolio_review_fetch.py
 # CI artifacts
 htmlcov/
 .coverage
+/_site/
 # .secrets.baseline is tracked — needed by detect-secrets pre-commit hook
 
 # Private TW market-data provider (galaxyark port) and its design spec.

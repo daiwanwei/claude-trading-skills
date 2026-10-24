@@ -170,3 +170,17 @@ accept_rules / modify_rules / defer / journal_only
 スクリプト:
 
 - `skills/trade-performance-coach/scripts/review_trade_performance.py`
+
+## 数値入力の検証とbeta状態
+
+評価に使う `planned.risk_r`、`actual.risk_r`、
+`risk_plan.max_risk_per_trade_r`、`actual.portfolio_heat_r`、
+`risk_plan.max_portfolio_heat_r`、`monthly.consecutive_losses` は、指定する場合、
+有限かつ非負の数値である必要があります。数値文字列とゼロは許容し、連敗数は整数に限定します。
+真偽値、負数、NaN、無限大、不正な文字列、変換時のオーバーフローは拒否します。
+不正な上限値を予定リスクに置き換えることはありません。未指定・nullは従来の部分入力扱いです。
+複数入力も各ファイルを検証し、不正な数値がある場合はフィールド名を表示して終了コード2で終了します。
+その際、レポートは作成・更新しません。
+
+beta状態を維持しています。レポートIDを使った出力パスの安全性と、複数入力を十分に集計しない
+既知の制限は、production昇格前に別途評価が必要です。
