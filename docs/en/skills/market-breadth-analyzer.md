@@ -279,3 +279,17 @@ After execution, the script produces two files and prints a summary to the conso
 | `market_breadth_YYYY-MM-DD_HHMMSS.json` | Structured JSON with all component scores, composite, and metadata |
 | `market_breadth_YYYY-MM-DD_HHMMSS.md` | Human-readable Markdown report |
 | `market_breadth_history.json` | Rolling history of composite scores (max 20 entries) |
+
+## Same-run provenance
+
+Pass `--run-id daily-20261017-unique` to both required market-regime-daily
+producers. Without it each producer generates its own unique ID. JSON includes
+schema 1.0 `data_provenance` with actual primary timeseries business date,
+UTC retrieval time, source and run ID. Unknown adjustment, point-in-time,
+survivorship and corporate-action flags are false. Auxiliary summary dates
+are unverified; this does not certify the freshness of every composite input.
+Missing or malformed primary dates stop report generation.
+
+Pass the exact JSON paths printed by these invocations to Exposure Coach's
+`--require-provenance --run-id … --as-of …` mode. Run IDs are caller-provided
+consistency markers, not authenticity or point-in-time proof.

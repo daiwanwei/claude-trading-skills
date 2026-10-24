@@ -214,6 +214,7 @@ def test_weekly_flow_success(pipeline_module, tmp_path: Path):
     assert len(state["history"]) >= 1
     assert state["history"][-1]["mode"] == "weekly"
     assert state["last_run"] is not None
+    assert set(state["last_success_at"]) == {"weekly"}
 
 
 def test_weekly_flow_mine_failure(pipeline_module, tmp_path: Path):
@@ -233,7 +234,7 @@ def test_weekly_flow_mine_failure(pipeline_module, tmp_path: Path):
     assert rc == 1
 
     # Score script should NOT have been called
-    score_calls = [c for c in call_log if pipeline_module.SCORE_SCRIPT in " ".join(c)]
+    score_calls = [c for c in call_log if str(Path(pipeline_module.SCORE_SCRIPT)) in " ".join(c)]
     assert len(score_calls) == 0
 
 
@@ -259,12 +260,14 @@ def test_weekly_flow_dry_run(pipeline_module, tmp_path: Path):
 
     assert rc == 0
 
+    assert "last_success_at" not in pipeline_module.load_state(tmp_path)
+
     # Verify --dry-run was passed to both subscripts
-    mine_calls = [c for c in call_log if pipeline_module.MINE_SCRIPT in " ".join(c)]
+    mine_calls = [c for c in call_log if str(Path(pipeline_module.MINE_SCRIPT)) in " ".join(c)]
     assert len(mine_calls) == 1
     assert "--dry-run" in mine_calls[0]
 
-    score_calls = [c for c in call_log if pipeline_module.SCORE_SCRIPT in " ".join(c)]
+    score_calls = [c for c in call_log if str(Path(pipeline_module.SCORE_SCRIPT)) in " ".join(c)]
     assert len(score_calls) == 1
     assert "--dry-run" in score_calls[0]
 
@@ -361,7 +364,7 @@ def test_run_weekly_score_failure(pipeline_module, tmp_path: Path):
         call_count[0] += 1
         cmd_str = " ".join(str(c) for c in cmd)
         # Score script fails
-        if pipeline_module.SCORE_SCRIPT in cmd_str:
+        if str(Path(pipeline_module.SCORE_SCRIPT)) in cmd_str:
             return CompletedProcess(cmd, 1, "", "scoring error")
         return CompletedProcess(cmd, 0, "", "")
 
@@ -708,6 +711,7 @@ def test_daily_flow_success(pipeline_module, tmp_path: Path):
     # State updated
     state = pipeline_module.load_state(tmp_path)
     assert state["history"][-1]["mode"] == "daily"
+    assert set(state["last_success_at"]) == {"daily"}
     assert state["history"][-1]["pr_url"] == "https://github.com/test/pr/1"
 
 
@@ -1398,3 +1402,17 @@ def test_rollback_restores_tracked_despite_untracked_pathspec(pipeline_module, t
     # Final clean-tree assertion ran and force-restored the leftover tracked file.
     assert any("status --porcelain" in c for c in call_log)
     assert "git restore -- docs/en/skills/index.md" in call_log
+
+
+@pytest.mark.parametrize(
+    "outcome,dry_run,success",
+    [
+        ("no_ideas", False, True),
+        ("pr_already_open", False, True),
+        ("design_failed", False, False),
+        ("no_ideas", True, False),
+    ],
+)
+def test_daily_heartbeat_outcomes(pipeline_module, tmp_path, outcome, dry_run, success):
+    pipeline_module._record_daily_state(tmp_path, None, None, None, 0, None, outcome, dry_run)
+    assert ("last_success_at" in pipeline_module.load_state(tmp_path)) == success

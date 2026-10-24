@@ -21,6 +21,22 @@ set -o pipefail
 
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:${HOME}/.local/bin:/usr/local/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Capture setup and orchestrator failures without replacing their exit status.
+notify_on_exit() {
+    local result=$?
+    trap - EXIT
+    if [ "$result" -ne 0 ] && [ -n "${SKILL_LOOP_NOTIFY:-}" ]; then
+        if command -v python3 >/dev/null 2>&1; then
+            python3 "${SCRIPT_DIR}/job_monitor.py" --notify-failure "$MONITOR_JOB" --exit-code "$result" || true
+        else
+            echo "Automation notification unavailable: python3 not found." >&2
+        fi
+    fi
+    exit "$result"
+}
+MONITOR_JOB=improvement
+trap notify_on_exit EXIT
 PRIMARY_REPO="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CHECKOUT="${SKILL_LOOP_CHECKOUT:-${HOME}/.local/share/claude-trading-skills-bot}"
 

@@ -29,6 +29,7 @@ Operational workflow manifests for the solo-trader OS. Each workflow names the e
 | [`stockbee-20pct-study-daily`](#stockbee-20pct-study-daily) — Stockbee 20% Study Daily | daily | 30 | mixed | advanced |
 | [`stockbee-ep-daily`](#stockbee-ep-daily) — Stockbee EP Daily | daily | 40 | mixed | advanced |
 | [`stockbee-fluency-loop`](#stockbee-fluency-loop) — Stockbee Setup Fluency Loop | daily | 20 | no-api-basic | intermediate |
+| [`strategy-research-pipeline`](#strategy-research-pipeline) — Strategy Research Pipeline | ad-hoc | 60 | no-api-basic | advanced |
 | [`swing-opportunity-daily`](#swing-opportunity-daily) — Swing Opportunity Daily | daily | 40 | fmp-required | intermediate |
 | [`trade-memory-loop`](#trade-memory-loop) — Trade Memory Loop | ad-hoc | 30 | no-api-basic | beginner |
 
@@ -66,7 +67,7 @@ Operational workflow manifests for the solo-trader OS. Each workflow names the e
 
 - consumes: `holdings_snapshot`
 - produces: `allocation_report`
-- **Decision:** Are sector and single-name concentrations within target bands? If not, what specific reallocation does the trader propose?
+- **Decision:** Before allocation review, run portfolio-manager/scripts/reconcile_positions.py on complete, same-account broker and ACTIVE / PARTIALLY_CLOSED memory snapshots per portfolio-manager/references/position-reconciliation.md. Retain the JSON and Markdown reconciliation_report. Stop here if can_continue is false or completeness, account attribution or freshness is unresolved. After a verified match, are sector and single-name concentrations within target bands? If not, what specific reallocation does the trader propose?
 
 **Step 3: Check dividend health (T1-T5 anomaly check)** (optional) → `kanchi-dividend-review-monitor`
 
@@ -86,6 +87,8 @@ Operational workflow manifests for the solo-trader OS. Each workflow names the e
 
 **Manual review:**
 
+- Require a verified reconciliation_report before allocation or rebalance review; resolve discrepancies manually and rerun the comparison.
+- Reconciliation is currently a manual gate; historical replay fixtures do not execute or enforce it.
 - Confirm holdings snapshot reflects the actual brokerage state (Alpaca or CSV).
 - Confirm rebalance actions are entered manually at the broker, not auto-executed.
 - If dividend_review_findings flags T1-T5 issues, defer additional buys until resolved.
@@ -665,6 +668,62 @@ Operational workflow manifests for the solo-trader OS. Each workflow names the e
 - Feed accepted lessons into monthly-performance-review rather than adding ad-hoc rules daily.
 
 **Journal destination:** `trader-memory-core`
+
+---
+
+## Strategy Research Pipeline {#strategy-research-pipeline}
+
+**`strategy-research-pipeline`** · ad-hoc · ~60 min · no-api-basic · advanced
+
+**When to run:** During offline research with a dated local EOD OHLCV parquet file. Detect research tickets, extract hints, and repeat detection against the same file and as-of date. Evaluate a final ticket only after a separate backtest has produced traceable metrics for that exact strategy and data period.
+
+**When NOT to run:** Do not use undated or unverified historical data, missing backtest metrics, or metrics from another ticket. This workflow does not execute a backtest, export to an external pipeline, authorize a strategy, or place trades.
+
+**Required skills:** `edge-candidate-agent`, `edge-hint-extractor`, `backtest-expert`
+
+**Optional skills:** (none)
+
+**Artifacts:**
+
+| Artifact | Produced by step | Required | Downstream hints |
+|---|---|---|---|
+| `initial_market_summary` | 1 | yes | — |
+| `initial_anomalies` | 1 | yes | — |
+| `initial_tickets` | 1 | no | — |
+| `edge_hints` | 2 | yes | — |
+| `final_research_tickets` | 3 | yes | — |
+| `backtest_quality_assessment` | 4 | yes | — |
+
+**Steps:**
+
+**Step 1: Detect initial candidates from local OHLCV** → `edge-candidate-agent`
+
+- produces: `initial_market_summary`, `initial_anomalies`, `initial_tickets`
+
+**Step 2: Extract dated deterministic edge hints** → `edge-hint-extractor`
+
+- consumes: `initial_market_summary`, `initial_anomalies`
+- produces: `edge_hints`
+
+**Step 3: Redetect final tickets with the same OHLCV and as-of date** (decision gate) → `edge-candidate-agent`
+
+- consumes: `edge_hints`
+- produces: `final_research_tickets`
+- **Decision:** Was the same local OHLCV file and --as-of date used as in step 1, with --hints pointing to step 2's hints.yaml and a separate output directory? Is there a final ticket worth testing? If not, stop here.
+
+**Step 4: Evaluate separately measured backtest results** (decision gate) → `backtest-expert`
+
+- consumes: `final_research_tickets`
+- produces: `backtest_quality_assessment`
+- **Decision:** Before invoking the evaluator, can the operator match all supplied metrics to this final ticket's strategy, universe, time period, and cost assumptions? Are all required metrics present, with slippage actually tested? If any answer is no or unknown, HOLD without a verdict. A Deploy/Refine/Abandon score is never approval to trade real funds.
+
+**Manual review:**
+
+- Use the same local --ohlcv parquet and --as-of date for both candidate runs; pass that --as-of date to edge-hint-extractor too, and verify hints.yaml records it. Write to separate directories and pass step 2 hints.yaml with --hints on the second run. Do not pass --export-strategies-dir or --pipeline-root.
+- Preserve the final ticket ID, universe, data period, cost assumptions, and provenance of the separate backtest metrics together with the result.
+- Supply total-trades, win-rate, avg-win-pct, avg-loss-pct, max-drawdown-pct, years-tested, and num-parameters to backtest-expert; use --slippage-tested only when friction was actually modeled. Missing or unlinked metrics mean HOLD before evaluation.
+- Independently inspect look-ahead, survivorship, and out-of-sample evidence; the scoring CLI does not verify these. Unknown means HOLD.
+- Keep research tickets and evaluation local. No external pipeline export, live API write, broker order, or real-money decision follows automatically.
 
 ---
 

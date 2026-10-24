@@ -72,13 +72,12 @@ API key will be requested during skill execution (stored only for current sessio
 ## 3. Quick Start
 
 ```bash
-# Default: next 7 days, market cap > $2B
-python3 earnings-calendar/scripts/fetch_earnings_fmp.py --api-key YOUR_KEY
+# Date range (positional START_DATE END_DATE); API key from FMP_API_KEY
+python3 earnings-calendar/scripts/fetch_earnings_fmp.py 2025-11-03 2025-11-09
 
-# Custom date range
+# Pass the API key as the optional third positional argument
 python3 earnings-calendar/scripts/fetch_earnings_fmp.py \
-  --from 2025-11-01 --to 2025-11-07 \
-  --api-key YOUR_KEY
+  2025-11-03 2025-11-09 YOUR_KEY
 ```
 
 ---
@@ -395,4 +394,6 @@ The script automatically handles all formatting including:
 **Scripts:**
 
 - `skills/earnings-calendar/scripts/fetch_earnings_fmp.py`
+- `skills/earnings-calendar/scripts/fmp_client.py`
+- `skills/earnings-calendar/scripts/_fmp_compat.py`
 - `skills/earnings-calendar/scripts/generate_report.py`

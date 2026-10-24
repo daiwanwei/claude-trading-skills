@@ -64,6 +64,26 @@ Describe what you are looking for in natural language, and receive structured re
 
 ---
 
+## Example Outputs
+
+These illustrations use fictional data. They show the shape of a recommendation, a market posture, and a review report; they are not live market readings or trade instructions.
+
+Select a preview to open the full-size SVG; on a phone, zoom after opening.
+
+[![Illustrative Navigator recommendation for a 15-minute daily market check with three required skills and no paid API key]({{ '/assets/previews/navigator-recommendation.svg' | relative_url }})]({{ '/assets/previews/navigator-recommendation.svg' | relative_url }})
+
+**Choose a workflow:** [Trading Skills Navigator]({{ '/en/skills/trading-skills-navigator/' | relative_url }}) maps a goal to a workflow and setup bundle.
+
+[![Illustrative Exposure Coach posture showing a 36 percent ceiling, REDUCE_ONLY recommendation, and LOW confidence due to missing inputs]({{ '/assets/previews/market-posture.svg' | relative_url }})]({{ '/assets/previews/market-posture.svg' | relative_url }})
+
+**Review market risk:** [Market Regime Daily]({{ '/en/workflows/' | relative_url }}) ends with a posture for human review.
+
+[![Illustrative Weekly Performance Digest for four fictional closed trades with 50 percent win rate and 75 dollars realized profit]({{ '/assets/previews/weekly-digest.svg' | relative_url }})]({{ '/assets/previews/weekly-digest.svg' | relative_url }})
+
+**Learn from closed trades:** [Weekly Performance Digest]({{ '/en/skills/weekly-performance-digest/' | relative_url }}) summarizes realized outcomes and process lessons.
+
+---
+
 ## Featured Skills
 
 | Skill | Highlights | API |

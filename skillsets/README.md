@@ -24,11 +24,12 @@ For the full schema, error codes, and validator rules, see
 | [`core-portfolio.yaml`](core-portfolio.yaml) | mixed | core-portfolio-weekly | portfolio-manager, trader-memory-core |
 | [`swing-opportunity.yaml`](swing-opportunity.yaml) | fmp-required | swing-opportunity-daily | vcp-screener, technical-analyst, position-sizer, trader-memory-core |
 | [`trade-memory.yaml`](trade-memory.yaml) | no-api-basic | trade-memory-loop, monthly-performance-review | trader-memory-core, signal-postmortem |
+| [`strategy-research.yaml`](strategy-research.yaml) | no-api-basic | strategy-research-pipeline | edge-candidate-agent, edge-hint-extractor, backtest-expert |
 
-This is the minimal Phase-2 set: the four categories that already have a
-shipped workflow. `dividend-income`, `strategy-research`, and
-`advanced-satellite` are deferred until a real workflow backs them — the
-Navigator keeps returning an honest gap (`manifest_status: deferred`) for those.
+These five categories have shipped workflows. `advanced-satellite` remains
+deferred until a dedicated workflow backs it; the Navigator returns an honest
+gap (`manifest_status: deferred`) for short strategies. `dividend-income` also
+remains deferred because it is not yet a canonical `skills-index.yaml` category.
 
 ## Naming: category id is canonical
 

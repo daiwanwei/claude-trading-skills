@@ -173,7 +173,10 @@ If no test exists for the changed behavior, add one whenever practical.
 skills must also carry the eight-axis `verification` block in `skills-index.yaml`. Use
 [`docs/dev/production-verification.md`](docs/dev/production-verification.md) for the pass/NA
 criteria, audit baseline, live high-severity issue gate, and the rule for resetting stale evidence
-to `not_verified`.
+to `not_verified`. Verification does not by itself catch a provider silently renaming a field a
+consumer reads (Issue #328's failure class) — see
+[`docs/dev/provider-contracts.md`](docs/dev/provider-contracts.md) for the FMP response contracts
+that gate on that.
 
 ### Pre-commit Hooks
 
@@ -295,10 +298,12 @@ The table below is **auto-generated** from `skills-index.yaml` by `scripts/gener
 | **Trading Skills Navigator** | ❌ Not used | ❌ Not used | ❌ Not used | Reads local skills-index.yaml + workflows/*.yaml (or bundled snapshot); no network |
 | **US Market Bubble Detector** | ❌ Not used | ❌ Not used | ❌ Not used | User provides indicators |
 | **US Stock Analysis** | ❌ Not used | ❌ Not used | ❌ Not used | User provides data |
+| **US Undervalued Growth Screener** | 🟡 Optional (Recommended) | ❌ Not used | ❌ Not used | Claude Code-native direct REST path using FMP_API_KEY. Bulk responses are cached and written to local artifacts; only compact screening results are returned to the model. Plan-gated bulk endpoints use bounded per-symbol fallbacks. |
 | **Uptrend Analyzer** | ❌ Not used | ❌ Not used | ❌ Not used | Monty Uptrend Ratio Dashboard CSV; no API key required |
 | **VCP Screener** | ✅ Required | ❌ Not used | ❌ Not used | S&P 500 OHLCV via FMP |
 | **Value Dividend Screener** | ✅ Required | 🟡 Optional (Recommended) | ❌ Not used | Financial Modeling Prep API |
 | **Weekly Performance Digest** | ❌ Not used | ❌ Not used | ❌ Not used | Pure calculation; works offline |
+| **manifoldbt Backtester** | ❌ Not used | ❌ Not used | ❌ Not used | pip install manifoldbt; free tier covers this skill, no API key; CSV or Parquet with timestamp, open, high, low, close, volume |
 <!-- skills-index:end name="api-matrix" -->
 
 > Note: a skill listed as `❌ Not used` for FMP / FINVIZ / Alpaca may still need WebSearch, public CSVs, chart screenshots, or other non-paid inputs. See each skill's full `integrations[]` entry in `skills-index.yaml` for the complete picture.
@@ -311,7 +316,7 @@ The table below is **auto-generated** from `skills-index.yaml` by `scripts/gener
 export FMP_API_KEY=your_key_here
 
 # Or provide via command-line argument when script runs
-python3 scripts/get_economic_calendar.py --api-key YOUR_KEY
+python3 skills/economic-calendar-fetcher/scripts/get_economic_calendar.py --api-key YOUR_KEY
 ```
 
 **FINVIZ Elite API:**
@@ -320,7 +325,7 @@ python3 scripts/get_economic_calendar.py --api-key YOUR_KEY
 export FINVIZ_API_KEY=your_key_here
 
 # Or provide via command-line argument
-python3 value-dividend-screener/scripts/screen_dividend_stocks.py \
+python3 skills/value-dividend-screener/scripts/screen_dividend_stocks.py \
   --use-finviz \
   --finviz-api-key YOUR_KEY
 ```
@@ -377,10 +382,10 @@ All API scripts follow this pattern:
 **Economic Calendar Fetcher:** ⚠️ Requires FMP API key
 ```bash
 # Default: next 7 days
-python3 economic-calendar-fetcher/scripts/get_economic_calendar.py --api-key YOUR_KEY
+python3 skills/economic-calendar-fetcher/scripts/get_economic_calendar.py --api-key YOUR_KEY
 
 # Specific date range (max 90 days)
-python3 economic-calendar-fetcher/scripts/get_economic_calendar.py \
+python3 skills/economic-calendar-fetcher/scripts/get_economic_calendar.py \
   --from 2025-11-01 --to 2025-11-30 \
   --api-key YOUR_KEY \
   --format json
@@ -388,25 +393,24 @@ python3 economic-calendar-fetcher/scripts/get_economic_calendar.py \
 
 **Earnings Calendar:** ⚠️ Requires FMP API key
 ```bash
-# Default: next 7 days, market cap > $2B
-python3 earnings-calendar/scripts/fetch_earnings_fmp.py --api-key YOUR_KEY
+# Date range (positional START_DATE END_DATE); API key from FMP_API_KEY
+python3 skills/earnings-calendar/scripts/fetch_earnings_fmp.py 2025-11-03 2025-11-09
 
-# Custom date range
-python3 earnings-calendar/scripts/fetch_earnings_fmp.py \
-  --from 2025-11-01 --to 2025-11-07 \
-  --api-key YOUR_KEY
+# Pass the API key as the optional third positional argument
+python3 skills/earnings-calendar/scripts/fetch_earnings_fmp.py \
+  2025-11-03 2025-11-09 YOUR_KEY
 ```
 
 **Value Dividend Screener:** ⚠️ Requires FMP API key; FINVIZ Elite optional but recommended
 ```bash
 # Two-stage screening (RECOMMENDED - 70-80% faster)
-python3 value-dividend-screener/scripts/screen_dividend_stocks.py --use-finviz
+python3 skills/value-dividend-screener/scripts/screen_dividend_stocks.py --use-finviz
 
 # FMP-only screening (no FINVIZ required)
-python3 value-dividend-screener/scripts/screen_dividend_stocks.py
+python3 skills/value-dividend-screener/scripts/screen_dividend_stocks.py
 
 # Custom parameters
-python3 value-dividend-screener/scripts/screen_dividend_stocks.py \
+python3 skills/value-dividend-screener/scripts/screen_dividend_stocks.py \
   --use-finviz \
   --top 50 \
   --output custom_results.json
@@ -415,28 +419,28 @@ python3 value-dividend-screener/scripts/screen_dividend_stocks.py \
 **Dividend Growth Pullback Screener:** ⚠️ Requires FMP API key; FINVIZ Elite optional but recommended
 ```bash
 # Two-stage screening with RSI filter (RECOMMENDED)
-python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py --use-finviz
+python3 skills/dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py --use-finviz
 
 # FMP-only screening (limited to ~40 stocks due to API limits)
-python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py --max-candidates 40
+python3 skills/dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py --max-candidates 40
 
-# Custom RSI threshold and dividend growth requirements
-python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py \
+# Custom maximum RSI and dividend growth requirements
+python3 skills/dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py \
   --use-finviz \
-  --rsi-threshold 35 \
+  --rsi-max 35 \
   --min-div-growth 15
 ```
 
 **Pair Trade Screener:** ⚠️ Requires FMP API key
 ```bash
 # Screen for pairs in specific sector
-python3 pair-trade-screener/scripts/find_pairs.py --sector Technology
+python3 skills/pair-trade-screener/scripts/find_pairs.py --sector Technology
 
 # Analyze specific pair
-python3 pair-trade-screener/scripts/analyze_spread.py AAPL MSFT
+python3 skills/pair-trade-screener/scripts/analyze_spread.py --stock-a AAPL --stock-b MSFT
 
 # Custom cointegration parameters
-python3 pair-trade-screener/scripts/find_pairs.py \
+python3 skills/pair-trade-screener/scripts/find_pairs.py \
   --sector Financials \
   --min-correlation 0.7 \
   --lookback-days 365
@@ -468,16 +472,17 @@ python3 skills/pead-screener/scripts/screen_pead.py \
 ```
 
 **Options Strategy Advisor:** 🟡 FMP API optional
+<!-- exec: skip reason="black_scholes CLI is a research entry point with no argparse parser, so it would silently ignore the documented flags; implement argparse or drop the example as follow-up" owner=@tradermonty expires=2026-12-31 -->
 ```bash
 # Calculate Black-Scholes price and Greeks
-python3 options-strategy-advisor/scripts/black_scholes.py \
+python3 skills/options-strategy-advisor/scripts/black_scholes.py \
   --ticker AAPL \
   --strike 150 \
   --days-to-expiry 30 \
   --option-type call
 
 # Analyze covered call strategy
-python3 options-strategy-advisor/scripts/black_scholes.py \
+python3 skills/options-strategy-advisor/scripts/black_scholes.py \
   --ticker AAPL \
   --strategy covered_call \
   --stock-price 155
@@ -507,6 +512,7 @@ python3 skills/portfolio-manager/scripts/check_alpaca_connection.py
 ```
 
 **Position Sizer:** No API key required
+<!-- exec: offline ci -->
 ```bash
 # Basic: stop-loss based sizing
 python3 skills/position-sizer/scripts/position_sizer.py \
@@ -655,9 +661,6 @@ An automated pipeline reviews and improves skill quality on a daily cadence.
 # Dry-run: score one skill without improvements or PRs
 python3 scripts/run_skill_improvement_loop.py --dry-run
 
-# Dry-run all skills
-python3 scripts/run_skill_improvement_loop.py --dry-run --all
-
 # Full run
 python3 scripts/run_skill_improvement_loop.py
 ```
@@ -684,10 +687,10 @@ uv run skills/dual-axis-skill-reviewer/scripts/run_dual_axis_review.py \
 
 **Tests:**
 ```bash
-# Reviewer tests (21 tests)
+# Reviewer tests
 python3 -m pytest skills/dual-axis-skill-reviewer/scripts/tests/ -v
 
-# Orchestrator tests (20 tests)
+# Orchestrator tests
 python3 -m pytest scripts/tests/test_skill_improvement_loop.py -v
 ```
 
@@ -734,10 +737,10 @@ python3 scripts/run_skill_generation_pipeline.py --mode daily
 
 **Tests:**
 ```bash
-# Pipeline tests (42 tests)
+# Pipeline tests
 python3 -m pytest scripts/tests/test_skill_generation_pipeline.py -v
 
-# Skill designer tests (3 tests)
+# Skill designer tests
 python3 -m pytest skills/skill-designer/scripts/tests/ -v
 ```
 
@@ -800,21 +803,13 @@ These skills fetch future events via FMP API:
 
 > **Canonical source:** `workflows/*.yaml` is the authoritative definition of multi-skill workflows for the Core + Satellite primary user. The prose examples below are quickstart sketches only — if any block here disagrees with a manifest in `workflows/`, the YAML is correct. See [`workflows/README.md`](workflows/README.md) for the manifest schema and `docs/dev/metadata-and-workflow-schema.md` for the full validator rules.
 
-### Canonical workflows (PR2)
+### Canonical workflows
 
-| Workflow | Cadence | Required skills |
-|---|---|---|
-| [`market-regime-daily`](workflows/market-regime-daily.yaml) | daily | market-breadth-analyzer, uptrend-analyzer, exposure-coach |
-| [`core-portfolio-weekly`](workflows/core-portfolio-weekly.yaml) | weekly | portfolio-manager, trader-memory-core |
-| [`swing-opportunity-daily`](workflows/swing-opportunity-daily.yaml) | daily | vcp-screener, drawdown-circuit-breaker, technical-analyst, position-sizer, trader-memory-core, pre-trade-discipline-gate |
-| [`trade-memory-loop`](workflows/trade-memory-loop.yaml) | per closed trade | trader-memory-core, signal-postmortem |
-| [`monthly-performance-review`](workflows/monthly-performance-review.yaml) | monthly | trader-memory-core, signal-postmortem |
-| [`shapiro-contrarian`](workflows/shapiro-contrarian.yaml) | weekly | cot-contrarian-detector, news-reaction-failure-analyzer, technical-analyst, contrarian-setup-gate, futures-position-sizer, trader-memory-core |
-| [`kanchi-dividend-weekly`](workflows/kanchi-dividend-weekly.yaml) | weekly | kanchi-dividend-sop, trader-memory-core |
+See [`workflows/README.md`](workflows/README.md) for the current workflow list and links to each manifest.
 
 ### Quickstart prose examples (NOT canonical)
 
-The blocks below are informal sketches kept for skills not yet covered by a YAML manifest. They are quickstart help, not contracts. When in doubt, defer to the YAML manifests above.
+The blocks below are informal sketches kept for skills not yet covered by a YAML manifest. They are quickstart help, not contracts. When in doubt, follow the manifests linked from `workflows/README.md`.
 
 **Daily Market Monitoring:**
 1. Economic Calendar Fetcher → Check today's events
@@ -937,7 +932,8 @@ Scripts should:
 - Check for API keys before making requests
 - Validate date ranges and input parameters
 - Provide helpful error messages to stderr
-- Return proper exit codes (0 for success, 1 for errors)
+- Return proper exit codes (0 for success, 1 for errors, 2 for missing
+  runtime dependencies with an actionable message pointing at requirements.txt)
 - Support retry logic with exponential backoff for rate limits
 
 ### No Personal Information in Committed Files
@@ -974,6 +970,24 @@ When skills are ready for distribution:
 5. Commit changes with descriptive message
 
 ZIP packages allow Claude web app users to upload and use skills without cloning the repository.
+
+**Runtime Dependency Declaration (issue #330):**
+
+Every skill with executable Python (`skills/<id>/scripts/*.py` outside `tests/`)
+must ship `skills/<id>/requirements.txt`:
+
+- List every third-party package the packaged scripts import (use
+  `opencv-python-headless`, never `opencv-python`, for CI compatibility).
+- Skills using only the standard library contain a `# stdlib-only` marker line.
+- Requirement-line grammar: `<PEP 508 requirement>` with an optional trailing
+  `# optional: <reason>` marker. Direct URL references and environment markers
+  (`;`) are rejected. An `optional` entry must be imported only inside
+  `try/except ImportError` with a degraded path plus an absence test.
+- Verify with `python3 scripts/check_skill_deps.py check` (offline, fail-closed)
+  and `python3 scripts/check_skill_deps.py smoke --skill <skill-id>`.
+  `package_skills.py` refuses to package an executable skill without the manifest.
+- New skills: copy the `requirements.txt` convention from an existing skill with
+  similar imports; the skill-creator flow must include this file before packaging.
 
 ⚠️ **API Key Requirements in Distribution:**
 - When distributing skills that require API keys, clearly document the requirements in the skill's SKILL.md

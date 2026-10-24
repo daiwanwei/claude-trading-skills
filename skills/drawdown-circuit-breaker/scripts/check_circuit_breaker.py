@@ -23,6 +23,14 @@ from zoneinfo import ZoneInfo
 
 import yaml
 
+# Keep sibling imports working for direct CLI execution and importlib-based
+# workflow replay tests that do not add this directory to ``sys.path``.
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from _market_calendar import next_session_after, next_session_on_or_after
+
 ET = ZoneInfo("America/New_York")
 TERMINAL_STATUSES = {"CLOSED", "INVALIDATED"}
 THESIS_STATUSES = {"IDEA", "ENTRY_READY", "ACTIVE", "PARTIALLY_CLOSED", *TERMINAL_STATUSES}
@@ -303,16 +311,36 @@ def load_theses(state_dir: Path) -> tuple[list[dict], str, list[str]]:
     if not paths:
         return [], "EMPTY_STATE", []
 
-    theses: list[dict] = []
+    candidates: list[tuple[Path, dict]] = []
     warnings: list[str] = []
     for path in paths:
         try:
             thesis = _load_thesis_file(path)
-            thesis.setdefault("_source_path", str(path))
-            theses.append(thesis)
+            # The enumerated path is authoritative. Never allow an untrusted
+            # YAML field to forge the source named in audit warnings.
+            thesis["_source_path"] = str(path)
+            candidates.append((path, thesis))
         except Exception as exc:  # noqa: BLE001 - degrade partially on local state issues.
             warnings.append(f"Skipped {path}: {exc}")
 
+    candidates_by_id: dict[str, list[tuple[Path, dict]]] = {}
+    for candidate in candidates:
+        normalized_id = candidate[1]["thesis_id"].strip()
+        candidates_by_id.setdefault(normalized_id, []).append(candidate)
+
+    duplicate_ids = {
+        thesis_id for thesis_id, grouped in candidates_by_id.items() if len(grouped) > 1
+    }
+    for thesis_id in sorted(duplicate_ids):
+        duplicate_paths = sorted(path for path, _thesis in candidates_by_id[thesis_id])
+        warnings.append(
+            f"Duplicate thesis_id {thesis_id!r} in valid thesis files; excluded all copies: "
+            + ", ".join(str(path) for path in duplicate_paths)
+        )
+
+    theses = [
+        thesis for _path, thesis in candidates if thesis["thesis_id"].strip() not in duplicate_ids
+    ]
     if warnings:
         return theses, "PARTIAL", warnings
     return theses, "OK", []
@@ -482,23 +510,26 @@ def _sum_realized_between(
 
 
 def _next_weekday(day: date) -> date:
-    candidate = day + timedelta(days=1)
-    while candidate.weekday() >= 5:
-        candidate += timedelta(days=1)
-    return candidate
+    """Compatibility name: return the next real XNYS session date."""
+    return next_session_after("XNYS", day).session_date
 
 
 def _next_monday(day: date) -> date:
+    """Return the first XNYS session in the next calendar week."""
     days_ahead = 7 - day.weekday()
     if days_ahead <= 0:
         days_ahead += 7
-    return day + timedelta(days=days_ahead)
+    boundary = day + timedelta(days=days_ahead)
+    return next_session_on_or_after("XNYS", boundary).session_date
 
 
 def _first_next_month(day: date) -> date:
+    """Return the first XNYS session on/after next month's first day."""
     if day.month == 12:
-        return date(day.year + 1, 1, 1)
-    return date(day.year, day.month + 1, 1)
+        boundary = date(day.year + 1, 1, 1)
+    else:
+        boundary = date(day.year, day.month + 1, 1)
+    return next_session_on_or_after("XNYS", boundary).session_date
 
 
 def _start_of_day_et(day: date) -> datetime:

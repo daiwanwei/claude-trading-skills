@@ -1,55 +1,63 @@
 {
-  "metadata": {
-    "generated_at": "2026-01-15 07:06:00",
-    "data_source": "Monty's Uptrend Ratio Dashboard CSV (public, no API key)",
-    "api_key_required": false,
-    "latest_data_date": "2026-01-14",
-    "timeseries_rows": 2390,
-    "sectors_available": 11
-  },
-  "composite": {
-    "composite_score": 72,
-    "composite_score_raw": 75,
-    "zone": "Bull",
-    "zone_detail": "Bull-Upper",
-    "zone_color": "light_green",
-    "zone_proximity": {
-      "at_boundary": false
+  "components": {
+    "historical_context": {
+      "data_available": true,
+      "score": 72
     },
-    "exposure_guidance": "Normal Exposure (80-100%)",
-    "warning_penalty": -3,
-    "active_warnings": [
-      {
-        "label": "Momentum Cooling",
-        "description": "Ratio still rising but slope is flattening.",
-        "actions": [
-          "Watch momentum component",
-          "Tighten trailing stops"
-        ]
-      }
-    ],
-    "strongest_component": {
-      "label": "Market Breadth",
+    "market_breadth": {
+      "data_available": true,
       "score": 85
     },
-    "weakest_component": {
-      "label": "Sector Rotation",
+    "momentum": {
+      "data_available": true,
+      "score": 68
+    },
+    "sector_participation": {
+      "data_available": true,
+      "score": 74
+    },
+    "sector_rotation": {
+      "data_available": true,
       "score": 66
-    },
-    "data_quality": {
-      "label": "Good"
-    },
-    "guidance": "Breadth participation is healthy; momentum is cooling but not negative.",
+    }
+  },
+  "composite": {
     "actions": [
-      "Maintain positions",
-      "Watch momentum"
+      "Normal position sizing",
+      "New entries on quality setups",
+      "Standard stop-loss levels",
+      "Monitor sector rotation for early warnings"
+    ],
+    "active_warnings": [
+      {
+        "actions": [
+          "Verify individual sector trends before entering positions",
+          "Avoid sectors diverging from their group majority",
+          "Monitor for group convergence or further deterioration"
+        ],
+        "description": "Significant divergence detected within sector groups. Some sectors within the same group are moving in opposite directions, suggesting hidden risk beneath the averages.",
+        "flag": "divergence",
+        "label": "SECTOR DIVERGENCE WARNING"
+      }
     ],
     "component_scores": {
+      "historical_context": {
+        "label": "Historical Context",
+        "score": 72,
+        "weight": 0.1,
+        "weighted_contribution": 7.2
+      },
       "market_breadth": {
-        "label": "Market Breadth",
+        "label": "Market Breadth (Overall)",
         "score": 85,
         "weight": 0.3,
         "weighted_contribution": 25.5
+      },
+      "momentum": {
+        "label": "Momentum",
+        "score": 68,
+        "weight": 0.2,
+        "weighted_contribution": 13.6
       },
       "sector_participation": {
         "label": "Sector Participation",
@@ -62,205 +70,72 @@
         "score": 66,
         "weight": 0.15,
         "weighted_contribution": 9.9
-      },
-      "momentum": {
-        "label": "Momentum",
-        "score": 68,
-        "weight": 0.2,
-        "weighted_contribution": 13.6
-      },
-      "historical_context": {
-        "label": "Historical Context",
-        "score": 72,
-        "weight": 0.1,
-        "weighted_contribution": 7.2
       }
+    },
+    "composite_score": 71.7,
+    "composite_score_raw": 74.7,
+    "data_quality": {
+      "available_count": 5,
+      "label": "Complete (5/5 components)",
+      "missing_components": [],
+      "total_components": 5
+    },
+    "exposure_guidance": "Normal Exposure, Lower End (80-90%)",
+    "guidance": "Healthy market breadth supporting equity allocation. Standard position management. However, active warnings suggest operating at the conservative end of the range.",
+    "strongest_component": {
+      "component": "market_breadth",
+      "label": "Market Breadth (Overall)",
+      "score": 85
+    },
+    "warning_penalty": -3,
+    "warning_penalty_breakdown": [
+      {
+        "flag": "divergence",
+        "penalty": -3
+      }
+    ],
+    "weakest_component": {
+      "component": "sector_rotation",
+      "label": "Sector Rotation",
+      "score": 66
+    },
+    "zone": "Bull",
+    "zone_color": "light_green",
+    "zone_detail": "Bull-Upper",
+    "zone_proximity": {
+      "at_boundary": true,
+      "distance": -8.3,
+      "label": "Near boundary: -8.3 points from 80 (below)",
+      "nearest_boundary": 80
     }
   },
-  "components": {
-    "market_breadth": {
-      "data_available": true,
-      "ratio_pct": 58.0,
-      "ma_10_pct": 55.5,
-      "trend": "Up",
-      "slope": 0.0014,
-      "trend_adjustment": 2,
-      "distance_from_upper": 0.21,
-      "distance_from_lower": 0.48,
-      "date": "2026-01-14",
-      "signal": "HEALTHY: 58% of stocks in an uptrend, above the 10-day MA"
-    },
-    "sector_participation": {
-      "data_available": true,
-      "uptrend_count": 8,
-      "total_sectors": 11,
-      "count_score": 73,
-      "spread_pct": 24.0,
-      "spread_score": 75,
-      "overbought_count": 1,
-      "overbought_sectors": [
-        "Technology"
-      ],
-      "oversold_count": 0,
-      "oversold_sectors": [],
-      "signal": "BROAD: 8 of 11 sectors participating",
-      "sector_details": [
-        {
-          "sector": "Technology",
-          "ratio_pct": 41.0,
-          "count": 58,
-          "total": 70,
-          "ma_10": 0.39,
-          "trend": "Up",
-          "slope": 0.0021,
-          "status": "Overbought"
-        },
-        {
-          "sector": "Industrials",
-          "ratio_pct": 33.0,
-          "count": 22,
-          "total": 34,
-          "ma_10": 0.31,
-          "trend": "Up",
-          "slope": 0.0015,
-          "status": "Normal"
-        },
-        {
-          "sector": "Financials",
-          "ratio_pct": 31.0,
-          "count": 20,
-          "total": 33,
-          "ma_10": 0.29,
-          "trend": "Up",
-          "slope": 0.0012,
-          "status": "Normal"
-        },
-        {
-          "sector": "Consumer Discretionary",
-          "ratio_pct": 30.0,
-          "count": 17,
-          "total": 30,
-          "ma_10": 0.28,
-          "trend": "Up",
-          "slope": 0.0011,
-          "status": "Normal"
-        },
-        {
-          "sector": "Communication Services",
-          "ratio_pct": 29.0,
-          "count": 7,
-          "total": 12,
-          "ma_10": 0.27,
-          "trend": "Up",
-          "slope": 0.001,
-          "status": "Normal"
-        },
-        {
-          "sector": "Materials",
-          "ratio_pct": 27.0,
-          "count": 8,
-          "total": 17,
-          "ma_10": 0.26,
-          "trend": "Up",
-          "slope": 0.0008,
-          "status": "Normal"
-        },
-        {
-          "sector": "Energy",
-          "ratio_pct": 26.0,
-          "count": 6,
-          "total": 12,
-          "ma_10": 0.25,
-          "trend": "Up",
-          "slope": 0.0007,
-          "status": "Normal"
-        },
-        {
-          "sector": "Health Care",
-          "ratio_pct": 24.0,
-          "count": 14,
-          "total": 30,
-          "ma_10": 0.24,
-          "trend": "Up",
-          "slope": 0.0005,
-          "status": "Normal"
-        },
-        {
-          "sector": "Consumer Staples",
-          "ratio_pct": 19.0,
-          "count": 6,
-          "total": 17,
-          "ma_10": 0.21,
-          "trend": "Down",
-          "slope": -0.0004,
-          "status": "Normal"
-        },
-        {
-          "sector": "Utilities",
-          "ratio_pct": 17.0,
-          "count": 5,
-          "total": 16,
-          "ma_10": 0.19,
-          "trend": "Down",
-          "slope": -0.0006,
-          "status": "Normal"
-        },
-        {
-          "sector": "Real Estate",
-          "ratio_pct": 16.0,
-          "count": 4,
-          "total": 15,
-          "ma_10": 0.18,
-          "trend": "Down",
-          "slope": -0.0007,
-          "status": "Normal"
-        }
-      ]
-    },
-    "sector_rotation": {
-      "data_available": true,
-      "cyclical_avg_pct": 61.0,
-      "defensive_avg_pct": 49.0,
-      "commodity_avg_pct": 52.0,
-      "difference_pct": 12.0,
-      "late_cycle_flag": false,
-      "divergence_flag": false,
-      "signal": "CONSTRUCTIVE: cyclicals leading defensives"
-    },
-    "momentum": {
-      "data_available": true,
-      "slope": 0.0009,
-      "slope_smoothing": "EMA(3)",
-      "slope_smoothed": 0.0008,
-      "slope_score": 64,
-      "acceleration_window": "10v10",
-      "acceleration": -0.0002,
-      "acceleration_label": "Cooling",
-      "acceleration_score": 55,
-      "sector_positive_slope_count": 7,
-      "sector_total": 11,
-      "sector_slope_breadth_score": 64,
-      "signal": "COOLING: still positive but slope flattening"
-    },
-    "historical_context": {
-      "data_available": true,
-      "current_ratio_pct": 58.0,
-      "percentile": 68,
-      "historical_min_pct": 4.0,
-      "historical_max_pct": 79.0,
-      "historical_median_pct": 47.0,
-      "avg_30d_pct": 55.0,
-      "avg_90d_pct": 51.0,
-      "data_points": 2390,
-      "date_range": "2016-2026",
-      "signal": "NORMAL: 68th percentile vs full history",
-      "confidence": {
-        "confidence_level": "Medium",
-        "sample_label": "n=2390",
-        "regime_coverage": "good",
-        "recency_label": "recent"
-      }
-    }
+  "data_provenance": {
+    "adjusted": false,
+    "as_of": "2026-01-14T21:00:00+00:00",
+    "corporate_actions_handled": false,
+    "endpoint": "market-regime-uptrend-component-fixture",
+    "point_in_time": false,
+    "provider": "fictional-fixture",
+    "retrieved_at": "2026-01-15T13:08:00+00:00",
+    "run_id": "fictional-market-regime-daily-run-001",
+    "schema_version": "1.0",
+    "scope": "fictional component fixture only; provider fetch not executed",
+    "survivorship_free": false,
+    "timezone": "America/New_York"
   },
-  "uptrend_score": 72
+  "metadata": {
+    "as_of": "2026-01-14T21:00:00+00:00",
+    "data_mode": "fictional offline component fixture",
+    "generated_at": "2026-01-15T13:08:00+00:00"
+  },
+  "provenance": {
+    "execution_mode": "native_api",
+    "fixture_boundaries": [
+      "provider fetch not executed",
+      "individual component calculators not executed",
+      "live API failure not exercised"
+    ],
+    "native_surface": "scorer.calculate_composite_score + report_generator.generate_json_report"
+  },
+  "schema_version": 1
 }

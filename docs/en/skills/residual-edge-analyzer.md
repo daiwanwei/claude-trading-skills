@@ -3,7 +3,7 @@ layout: default
 title: "Residual Edge Analyzer"
 grand_parent: English
 parent: Skill Guides
-nav_order: 51
+nav_order: 52
 lang_peer: /ja/skills/residual-edge-analyzer/
 permalink: /en/skills/residual-edge-analyzer/
 generated: true
@@ -44,8 +44,8 @@ Treat this as a falsification gate after `backtest-expert`, not as trade authori
 - Use Python 3.9+.
 - Prepare one CSV containing an ISO date, strategy return, and every baseline return on
   the same row.
-- Prepare a JSON specification following
-  [references/input-contract.md](references/input-contract.md).
+- Prepare a JSON specification following the
+  [input contract](https://github.com/tradermonty/claude-trading-skills/blob/main/skills/residual-edge-analyzer/references/input-contract.md).
 - Supply actual period returns. Do not substitute CAGR, Sharpe, cumulative P&L, or other
   summary metrics.
 

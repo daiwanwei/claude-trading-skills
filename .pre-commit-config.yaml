@@ -8,6 +8,9 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+        # Tracked symlink: with core.symlinks=false (Windows default) it checks
+        # out as a plain file holding the link target, which must stay newline-free.
+        exclude: '^examples/daily-market-dashboard/\.claude/skills$'
       - id: check-yaml
       - id: check-toml
       - id: check-merge-conflict
@@ -15,17 +18,22 @@ repos:
         args: [--maxkb=500]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.6
+    rev: v0.17.0
     hooks:
-      - id: ruff
+      # The FMP client templates carry a python3 shebang. On Windows, where
+      # every file counts as executable, pre-commit reads it and tags them as
+      # Python, but their @@...@@ placeholders are not valid Python.
+      - id: ruff-check
         args: [--fix]
+        exclude: '\.tmpl$'
       - id: ruff-format
+        exclude: '\.tmpl$'
 
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.1
     hooks:
       - id: codespell
-        args: [--skip, ".venv,*.json,*.csv,*.baseline,skill-packages,*.pyc,__pycache__",
+        args: [--skip, ".venv,*.json,*.csv,*.baseline,skill-packages,*.pyc,__pycache__,docs/Gemfile.lock",
                --ignore-words-list, "trough,ore,cna,acn,blok,hims,pont,claus,theses",
                --ignore-regex, "(Depósito|Deposito) inicial"]
 
@@ -54,11 +62,33 @@ repos:
         language: system
         files: 'skills/.*/SKILL\.md$'
 
+      - id: skill-references
+        name: Validate SKILL.md bundled resource references
+        entry: python3 scripts/check_skill_references.py
+        language: system
+        files: '^(skills/.*|scripts/check_skill_references\.py|scripts/tests/test_check_skill_references\.py|\.pre-commit-config\.yaml)$'
+        pass_filenames: false
+        always_run: true
+
       - id: docs-completeness
         name: Check all skills have doc pages
         entry: python3 scripts/hooks/check_docs_completeness.py
         language: system
         files: 'skills/.*/SKILL\.md$|docs/.*/skills/.*\.md$'
+        pass_filenames: false
+
+      - id: docs-site-source
+        name: Validate docs permalinks and language peers
+        entry: python3 scripts/check_docs_site.py source
+        language: system
+        files: '^(docs/|scripts/check_docs_site\.py|scripts/tests/test_check_docs_site\.py)'
+        pass_filenames: false
+
+      - id: docs-site-allowlist
+        name: Validate docs external-link allowlist policy
+        entry: python3 scripts/check_docs_site.py allowlist
+        language: system
+        files: '^(config/docs-external-link-allowlist\.json|scripts/check_docs_site\.py|scripts/tests/test_check_docs_site\.py)$'
         pass_filenames: false
 
       - id: validate-skills-index
@@ -112,6 +142,17 @@ repos:
         files: '^(skills/[^/]+/SKILL\.md|skills/[^/]+/references/.*|skills/[^/]+/scripts/.*\.py|scripts/generate_skill_docs\.py|CLAUDE\.md|skill-packages/.*\.skill|docs/(en|ja)/skills/[^/]+\.md)$'
         pass_filenames: false
 
+      - id: docs-cli-examples
+        name: Validate documented CLI examples (issue #336)
+        entry: python3 scripts/check_doc_cli_examples.py validate
+        language: system
+        # Fire on the example-bearing docs (markdown targets of the gate,
+        # including every SKILL.md), the checker, and its tests. Always
+        # validates every configured target (offline, deterministic,
+        # stdlib-only).
+        files: '^(CLAUDE\.md|README\.md|README\.ja\.md|skills/[^/]+/SKILL\.md|scripts/check_doc_cli_examples\.py|scripts/tests/test_check_doc_cli_examples\.py)$'
+        pass_filenames: false
+
       - id: catalog-drift
         name: README + CLAUDE.md catalog drift check (regenerate from skills-index.yaml)
         entry: python3 scripts/generate_catalog_from_index.py --check
@@ -120,6 +161,26 @@ repos:
         # and the target files themselves (catches manual edits between
         # sentinel markers).
         files: '^(skills-index\.yaml|scripts/generate_catalog_from_index\.py|README\.md|README\.ja\.md|CLAUDE\.md)$'
+        pass_filenames: false
+
+      - id: quality-dashboard-drift
+        name: Quality dashboard drift check (regenerate from SSoT inputs + snapshot)
+        entry: python3 scripts/generate_quality_dashboard.py --check
+        language: system
+        # Fire on any deterministic input that shapes the dashboard, the
+        # generator, and the rendered pages themselves (catches manual edits
+        # between the auto-generated page boundaries). skills/**/scripts/tests
+        # is included because has-tests (the Tests column) is filesystem-derived.
+        files: '^(skills-index\.yaml|config/ci-test-policy\.yaml|examples/workflows/replay-coverage\.yaml|docs/assets/quality-dashboard-sources\.json|scripts/generate_quality_dashboard\.py|docs/(en|ja)/quality-dashboard\.md|skills/[^/]+/scripts/tests/.*)$'
+        pass_filenames: false
+
+      - id: website-skill-catalog-check
+        name: Website EN/JA skill catalog canonical-data check
+        entry: python3 scripts/check_skill_catalog.py
+        language: system
+        # Website descriptions remain localized and hand-written. Validate
+        # identity, completeness, counts, and paid-API fields against the index.
+        files: '^(skills-index\.yaml|scripts/check_skill_catalog\.py|scripts/tests/test_check_skill_catalog\.py|docs/(en|ja)/skill-catalog\.md)$'
         pass_filenames: false
 
       - id: snapshot-check
@@ -141,7 +202,25 @@ repos:
         language: system
         # Fire on the canonical source, the generator, and every vendored copy
         # (catches a manual edit to a generated fmp_client.py / _fmp_compat.py).
-        files: '^(scripts/fmp_client/.*|scripts/generate_fmp_client\.py|skills/(pead-screener|earnings-trade-analyzer|ibd-distribution-day-monitor|vcp-screener|parabolic-short-trade-planner|ftd-detector|canslim-screener|macro-regime-detector|market-top-detector)/scripts/(fmp_client|_fmp_compat)\.py)$'
+        files: '^(scripts/fmp_client/.*|scripts/generate_fmp_client\.py|skills/(pead-screener|earnings-trade-analyzer|ibd-distribution-day-monitor|vcp-screener|parabolic-short-trade-planner|ftd-detector|canslim-screener|macro-regime-detector|market-top-detector|us-undervalued-growth-screener|earnings-calendar|economic-calendar-fetcher|institutional-flow-tracker|cot-contrarian-detector|value-dividend-screener|dividend-growth-pullback-screener|kanchi-dividend-sop)/scripts/(fmp_client|_fmp_compat)\.py)$'
+        pass_filenames: false
+
+      - id: market-calendar-drift
+        name: Shared market calendar drift and dependency contract check
+        entry: python3 scripts/generate_market_calendar.py --check
+        language: system
+        files: '^(\.github/workflows/ci\.yml|config/(market-calendar-dependency|ci-test-policy)\.yaml|pyproject\.toml|scripts/(generate_market_calendar|smoke_market_calendar)\.py|scripts/market_calendar/.*|skills/(breakout-trade-planner|drawdown-circuit-breaker|market-environment-analysis|market-top-detector|parabolic-short-trade-planner|theme-detector)/(requirements\.txt|scripts/_market_calendar\.py|scripts/tests/test_market_calendar_contract\.py)|examples/weekly-trade-strategy/(\.claude/skills|skills)/market-environment-analysis/(requirements\.txt|scripts/(_market_calendar|market_utils)\.py))$'
+        pass_filenames: false
+
+      - id: compat-matrix-drift
+        name: Compat matrix drift check (supported OS/Python)
+        entry: python3 scripts/check_compat_matrix.py
+        language: system
+        # Fire on every workflow (not just the two compat files, so a new
+        # workflow that runs an unsupported combo is rechecked), the matrix
+        # document (the declared mapping), the runtime/policy bounds, and the
+        # checker itself (so a logic change revalidates).
+        files: '^(\.github/workflows/.*|config/python-support\.json|docs/dev/compatibility-matrix\.md|pyproject\.toml|scripts/check_compat_matrix\.py|scripts/tests/test_check_compat_matrix\.py)$'
         pass_filenames: false
 
       - id: changed-package-drift
@@ -156,11 +235,11 @@ repos:
 
       - id: fmp-package-drift
         name: FMP skill package drift check (re-package after vendored client changes)
-        entry: python3 scripts/package_skills.py --check --skill pead-screener --skill earnings-trade-analyzer --skill ibd-distribution-day-monitor --skill vcp-screener --skill parabolic-short-trade-planner --skill ftd-detector --skill canslim-screener --skill macro-regime-detector --skill market-top-detector
+        entry: python3 scripts/package_skills.py --check --skill pead-screener --skill earnings-trade-analyzer --skill ibd-distribution-day-monitor --skill vcp-screener --skill parabolic-short-trade-planner --skill ftd-detector --skill canslim-screener --skill macro-regime-detector --skill market-top-detector --skill us-undervalued-growth-screener --skill earnings-calendar --skill economic-calendar-fetcher --skill institutional-flow-tracker --skill cot-contrarian-detector --skill value-dividend-screener --skill dividend-growth-pullback-screener --skill kanchi-dividend-sop
         language: system
         # The fmp-client-drift gate validates source; this validates the .skill
         # bundles so an edited client that was not re-packaged is caught.
-        files: '^(skills/(pead-screener|earnings-trade-analyzer|ibd-distribution-day-monitor|vcp-screener|parabolic-short-trade-planner|ftd-detector|canslim-screener|macro-regime-detector|market-top-detector)/.*|skill-packages/(pead-screener|earnings-trade-analyzer|ibd-distribution-day-monitor|vcp-screener|parabolic-short-trade-planner|ftd-detector|canslim-screener|macro-regime-detector|market-top-detector)\.skill)$'
+        files: '^(skills/(pead-screener|earnings-trade-analyzer|ibd-distribution-day-monitor|vcp-screener|parabolic-short-trade-planner|ftd-detector|canslim-screener|macro-regime-detector|market-top-detector|us-undervalued-growth-screener|earnings-calendar|economic-calendar-fetcher|institutional-flow-tracker|cot-contrarian-detector|value-dividend-screener|dividend-growth-pullback-screener|kanchi-dividend-sop)/.*|skill-packages/(pead-screener|earnings-trade-analyzer|ibd-distribution-day-monitor|vcp-screener|parabolic-short-trade-planner|ftd-detector|canslim-screener|macro-regime-detector|market-top-detector|us-undervalued-growth-screener|earnings-calendar|economic-calendar-fetcher|institutional-flow-tracker|cot-contrarian-detector|value-dividend-screener|dividend-growth-pullback-screener|kanchi-dividend-sop)\.skill)$'
         pass_filenames: false
 
       # Pre-push hook: run validator in --strict-workflows + --strict-metadata

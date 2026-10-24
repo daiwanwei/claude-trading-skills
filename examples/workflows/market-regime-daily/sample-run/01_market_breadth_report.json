@@ -1,27 +1,97 @@
 {
-  "metadata": {
-    "generated_at": "2026-01-15 07:05:00",
-    "data_source": "TraderMonty Market Breadth CSV (public, no API key)",
-    "detail_url": "https://tradermonty.github.io/market-breadth-analysis/",
-    "summary_url": "https://tradermonty.github.io/market-breadth-analysis/",
-    "total_rows": 2480,
-    "data_freshness": {
-      "latest_date": "2026-01-14",
-      "days_old": 1,
-      "warning": null,
-      "last_modified": null
+  "components": {
+    "bearish_signal": {
+      "data_available": true,
+      "score": 80
+    },
+    "breadth_level_trend": {
+      "data_available": true,
+      "score": 72
+    },
+    "cycle_position": {
+      "data_available": true,
+      "score": 60
+    },
+    "divergence": {
+      "data_available": true,
+      "score": 50
+    },
+    "historical_percentile": {
+      "data_available": true,
+      "score": 55
+    },
+    "ma_crossover": {
+      "data_available": true,
+      "score": 68
     }
   },
   "composite": {
-    "composite_score": 66,
-    "zone": "Healthy",
-    "zone_color": "blue",
-    "exposure_guidance": "75-90%",
-    "guidance": "Normal operations. Broad participation, but watch the S&P 500 vs breadth divergence.",
     "actions": [
-      "Maintain core exposure",
-      "Monitor divergence component"
+      "Normal position sizing",
+      "Standard stop-loss levels",
+      "New position entries allowed",
+      "Monitor for deterioration in leading indicators"
     ],
+    "component_scores": {
+      "bearish_signal": {
+        "data_available": true,
+        "effective_weight": 0.15,
+        "label": "Bearish Signal Status",
+        "score": 80,
+        "weight": 0.15,
+        "weighted_contribution": 12.0
+      },
+      "breadth_level_trend": {
+        "data_available": true,
+        "effective_weight": 0.25,
+        "label": "Current Breadth Level & Trend",
+        "score": 72,
+        "weight": 0.25,
+        "weighted_contribution": 18.0
+      },
+      "cycle_position": {
+        "data_available": true,
+        "effective_weight": 0.2,
+        "label": "Peak/Trough Cycle Position",
+        "score": 60,
+        "weight": 0.2,
+        "weighted_contribution": 12.0
+      },
+      "divergence": {
+        "data_available": true,
+        "effective_weight": 0.1,
+        "label": "S&P 500 vs Breadth Divergence",
+        "score": 50,
+        "weight": 0.1,
+        "weighted_contribution": 5.0
+      },
+      "historical_percentile": {
+        "data_available": true,
+        "effective_weight": 0.1,
+        "label": "Historical Percentile",
+        "score": 55,
+        "weight": 0.1,
+        "weighted_contribution": 5.5
+      },
+      "ma_crossover": {
+        "data_available": true,
+        "effective_weight": 0.2,
+        "label": "8MA vs 200MA Crossover",
+        "score": 68,
+        "weight": 0.2,
+        "weighted_contribution": 13.6
+      }
+    },
+    "composite_score": 66.1,
+    "data_quality": {
+      "available_count": 6,
+      "label": "Complete (6/6 components)",
+      "missing_components": [],
+      "total_components": 6
+    },
+    "excluded_components": [],
+    "exposure_guidance": "75-90%",
+    "guidance": "Above-average breadth. Normal operations with standard risk management.",
     "strongest_health": {
       "component": "bearish_signal",
       "label": "Bearish Signal Status",
@@ -32,127 +102,36 @@
       "label": "S&P 500 vs Breadth Divergence",
       "score": 50
     },
-    "excluded_components": [],
-    "data_quality": {
-      "available_count": 6,
-      "total_components": 6,
-      "label": "Complete (6/6 components)",
-      "missing_components": []
-    },
-    "component_scores": {
-      "breadth_level_trend": {
-        "score": 72,
-        "weight": 0.25,
-        "effective_weight": 0.25,
-        "weighted_contribution": 18.0,
-        "data_available": true,
-        "label": "Current Breadth Level & Trend"
-      },
-      "ma_crossover": {
-        "score": 68,
-        "weight": 0.2,
-        "effective_weight": 0.2,
-        "weighted_contribution": 13.6,
-        "data_available": true,
-        "label": "8MA vs 200MA Crossover"
-      },
-      "cycle_position": {
-        "score": 60,
-        "weight": 0.2,
-        "effective_weight": 0.2,
-        "weighted_contribution": 12.0,
-        "data_available": true,
-        "label": "Peak/Trough Cycle Position"
-      },
-      "bearish_signal": {
-        "score": 80,
-        "weight": 0.15,
-        "effective_weight": 0.15,
-        "weighted_contribution": 12.0,
-        "data_available": true,
-        "label": "Bearish Signal Status"
-      },
-      "historical_percentile": {
-        "score": 55,
-        "weight": 0.1,
-        "effective_weight": 0.1,
-        "weighted_contribution": 5.5,
-        "data_available": true,
-        "label": "Historical Percentile"
-      },
-      "divergence": {
-        "score": 50,
-        "weight": 0.1,
-        "effective_weight": 0.1,
-        "weighted_contribution": 5.0,
-        "data_available": true,
-        "label": "S&P 500 vs Breadth Divergence"
-      }
-    }
+    "zone": "Healthy",
+    "zone_color": "blue"
   },
-  "components": {
-    "breadth_level_trend": {
-      "score": 72,
-      "signal": "HEALTHY: 8MA above 200MA, rising",
-      "data_available": true,
-      "current_8ma": 0.61,
-      "current_200ma": 0.54,
-      "trend": 1,
-      "level_score": 70,
-      "trend_score": 74,
-      "ma8_direction": "rising",
-      "direction_modifier": 0
-    },
-    "ma_crossover": {
-      "score": 68,
-      "signal": "POSITIVE: 8MA > 200MA",
-      "data_available": true,
-      "gap": 0.07,
-      "gap_score": 72,
-      "ma8_direction": "rising",
-      "direction_modifier": 0
-    },
-    "cycle_position": {
-      "score": 60,
-      "signal": "NEUTRAL: mid-cycle",
-      "data_available": true,
-      "latest_marker_type": "trough",
-      "days_since_marker": 34,
-      "ma8_trend": "rising",
-      "extreme_trough": false
-    },
-    "bearish_signal": {
-      "score": 80,
-      "signal": "CLEAR: no active bearish signal",
-      "data_available": true,
-      "signal_active": false,
-      "trend": 1,
-      "current_8ma": 0.61,
-      "in_pink_zone": false,
-      "pink_zone_days": 0,
-      "base_score": 90,
-      "context_adjustment": -10,
-      "pink_zone_adjustment": 0
-    },
-    "historical_percentile": {
-      "score": 55,
-      "signal": "NORMAL: 55th percentile",
-      "data_available": true,
-      "current_8ma": 0.61,
-      "percentile_rank": 55.0,
-      "avg_peak": 0.68,
-      "avg_trough": 0.34,
-      "adjustment": 0
-    },
-    "divergence": {
-      "score": 50,
-      "signal": "MILD: price slightly ahead of breadth",
-      "data_available": true,
-      "sp500_pct_change": 3.1,
-      "breadth_change": 0.012,
-      "divergence_type": "mild_bearish",
-      "early_warning": false
-    }
+  "data_provenance": {
+    "adjusted": false,
+    "as_of": "2026-01-14T21:00:00+00:00",
+    "corporate_actions_handled": false,
+    "endpoint": "market-regime-breadth-component-fixture",
+    "point_in_time": false,
+    "provider": "fictional-fixture",
+    "retrieved_at": "2026-01-15T13:08:00+00:00",
+    "run_id": "fictional-market-regime-daily-run-001",
+    "schema_version": "1.0",
+    "scope": "fictional component fixture only; provider fetch not executed",
+    "survivorship_free": false,
+    "timezone": "America/New_York"
   },
-  "breadth_score": 66
+  "metadata": {
+    "as_of": "2026-01-14T21:00:00+00:00",
+    "data_mode": "fictional offline component fixture",
+    "generated_at": "2026-01-15T13:08:00+00:00"
+  },
+  "provenance": {
+    "execution_mode": "native_api",
+    "fixture_boundaries": [
+      "provider fetch not executed",
+      "individual component calculators not executed",
+      "live API failure not exercised"
+    ],
+    "native_surface": "scorer.calculate_composite_score + report_generator.generate_json_report"
+  },
+  "schema_version": 1
 }

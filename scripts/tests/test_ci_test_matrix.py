@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 import yaml
+from packaging.utils import canonicalize_name
 
 from scripts.ci_test_matrix import (
     POLICY_GATE_ID,
@@ -17,12 +18,15 @@ from scripts.ci_test_matrix import (
     SkillMetadata,
     TestEntry,
     TestPolicy,
+    _emit_expiry_warnings,
     aggregate,
     build_entries,
     discover,
+    exception_expiry_report,
     executable_test_inventory,
     install,
     load_policy,
+    locked_versions,
     main,
     matrix,
     run,
@@ -575,14 +579,485 @@ def test_current_policy_has_no_allowed_failures_and_enforces_all_tiers():
     entries = build_entries(policy=policy)
 
     assert policy.aggregate_target == 75
-    assert policy.aggregate_waiver is not None
-    assert policy.aggregate_waiver.floor == 72
+    assert policy.aggregate_waiver is None
     assert policy.allowed_failures == {}
     assert entries["theme-detector"].allowed_failure is False
     assert entries["futures-position-sizer"].coverage_target == 85
     assert entries["drawdown-circuit-breaker"].coverage_target == 85
+    assert entries["position-sizer"].coverage_target == 85
+    assert entries["position-sizer"].coverage_floor == 85
+    assert entries["position-sizer"].coverage_waiver is None
     assert entries["mt5-robot-tester"].coverage_target == 70
     assert entries["options-strategy-advisor"].coverage_floor == 70
-    assert entries["signal-postmortem"].coverage_floor == 40
+    assert entries["signal-postmortem"].coverage_floor == 70
+    assert entries["signal-postmortem"].coverage_waiver is None
     assert entries["pair-trade-screener"].requirements == ("statsmodels>=0.14,<0.15",)
     assert entries["market-news-analyst"].coverage_target is None
+
+
+@pytest.mark.parametrize("installed", ["1.0", "2.0"])
+def test_install_check_verifies_version_without_installing(monkeypatch, installed):
+    monkeypatch.setattr("scripts.ci_test_matrix.metadata.version", lambda name: installed)
+    monkeypatch.setattr(
+        "scripts.ci_test_matrix.subprocess.run",
+        lambda *args, **kwargs: pytest.fail("check mode must not install"),
+    )
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("safe-package>=1",))
+    install(entry, check=True)
+
+
+def test_install_check_rejects_missing_distribution(monkeypatch):
+    from importlib.metadata import PackageNotFoundError
+
+    def missing(name):
+        raise PackageNotFoundError(name)
+
+    monkeypatch.setattr("scripts.ci_test_matrix.metadata.version", missing)
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("missing-package>=1",))
+    with pytest.raises(MatrixError, match="missing requirement"):
+        install(entry, check=True)
+
+
+def test_install_check_rejects_incompatible_version(monkeypatch):
+    monkeypatch.setattr("scripts.ci_test_matrix.metadata.version", lambda name: "0.9")
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("safe-package>=1",))
+    with pytest.raises(MatrixError, match="needs safe-package>=1"):
+        install(entry, check=True)
+
+
+def test_install_check_skips_inapplicable_markers(monkeypatch):
+    monkeypatch.setattr(
+        "scripts.ci_test_matrix.metadata.version", lambda name: pytest.fail("inactive marker")
+    )
+    entry = TestEntry(
+        "alpha", ("tests",), "scripts", requirements=('safe-package; python_version < "2"',)
+    )
+    install(entry, check=True)
+
+
+@pytest.mark.parametrize("requirement", ["safe[extra]>=1", "safe @ https://example.com/safe.whl"])
+def test_install_check_fails_closed_on_unverifiable_requirement(requirement):
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=(requirement,))
+    with pytest.raises(MatrixError, match="cannot verify"):
+        install(entry, check=True)
+
+
+def test_install_check_cli_forwards_check_flag(monkeypatch):
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("safe>=1",))
+    monkeypatch.setattr("scripts.ci_test_matrix.load_policy", lambda root, **kwargs: None)
+    monkeypatch.setattr("scripts.ci_test_matrix.load_skill_metadata", lambda root: {})
+    monkeypatch.setattr("scripts.ci_test_matrix.build_entries", lambda *args: {"alpha": entry})
+    calls = []
+    monkeypatch.setattr(
+        "scripts.ci_test_matrix.install", lambda item, *, check: calls.append((item, check))
+    )
+    assert main(["install", "--check", "alpha"]) == 0
+    assert calls == [(entry, True)]
+
+
+def test_current_policy_survives_the_october_31_cliff():
+    # Regression pin for issue #293: every waiver once expired on 2026-10-31, which made
+    # load_policy (and so every ci_test_matrix command) fail from 2026-11-01.
+    policy = load_policy(today=date(2026, 11, 1))
+    assert policy.aggregate_waiver is None
+    expiries = [w.expires_on for w in policy.coverage_waivers.values()]
+    expiries += [a.expires_on for a in policy.allowed_failures.values()]
+    # The waiver list may be empty once every skill meets its target.
+    assert all(expiry >= date(2026, 11, 2) for expiry in expiries)
+    for skill_id, waiver in policy.coverage_waivers.items():
+        assert waiver.issue == 293, skill_id
+
+
+def test_load_policy_expiry_boundary_is_inclusive(tmp_path):
+    payload = _base_policy()
+    payload["aggregate_coverage"] = {
+        "target": 75,
+        "waiver": {
+            "floor": 70,
+            "target": 75,
+            "expires_on": "2027-01-31",
+            "issue": 293,
+            "reason": "boundary",
+        },
+    }
+    _write_policy(tmp_path, payload)
+    assert load_policy(tmp_path, today=date(2027, 1, 31)).aggregate_waiver is not None
+    with pytest.raises(MatrixError, match="expired on 2027-01-31"):
+        load_policy(tmp_path, today=date(2027, 2, 1))
+
+
+def _expiry_policy(
+    *, aggregate_expires: date | None, waiver_expires: date, allowed_expires: date | None = None
+) -> TestPolicy:
+    aggregate_waiver = (
+        None
+        if aggregate_expires is None
+        else CoverageWaiver(
+            floor=70, target=75, expires_on=aggregate_expires, issue=293, reason="agg"
+        )
+    )
+    allowed = (
+        {}
+        if allowed_expires is None
+        else {"known": DatedException(expires_on=allowed_expires, issue=7, reason="flaky")}
+    )
+    return TestPolicy(
+        aggregate_target=75,
+        aggregate_waiver=aggregate_waiver,
+        default_target=70,
+        tier_targets={},
+        coverage_waivers={
+            "alpha": CoverageWaiver(
+                floor=60, target=70, expires_on=waiver_expires, issue=293, reason="skill"
+            )
+        },
+        allowed_failures=allowed,
+        matrix_overrides={},
+    )
+
+
+@pytest.mark.parametrize(
+    ("days", "status"),
+    [(15, "active"), (14, "warning"), (8, "warning"), (7, "urgent"), (0, "urgent")],
+)
+def test_exception_expiry_report_status_bands(days, status):
+    today = date(2026, 12, 1)
+    expires = date.fromordinal(today.toordinal() + days)
+    policy = _expiry_policy(aggregate_expires=None, waiver_expires=expires)
+    (row,) = exception_expiry_report(policy, today)
+    assert row == {
+        "kind": "coverage_waiver",
+        "id": "alpha",
+        "issue": 293,
+        "expires_on": expires.isoformat(),
+        "days_remaining": days,
+        "status": status,
+    }
+
+
+def test_exception_expiry_report_covers_all_kinds_in_sorted_order():
+    today = date(2026, 12, 1)
+    policy = _expiry_policy(
+        aggregate_expires=date(2026, 12, 20),
+        waiver_expires=date(2026, 12, 10),
+        allowed_expires=date(2026, 12, 10),
+    )
+    rows = exception_expiry_report(policy, today)
+    assert [(r["expires_on"], r["kind"], r["id"]) for r in rows] == [
+        ("2026-12-10", "allowed_failure", "known"),
+        ("2026-12-10", "coverage_waiver", "alpha"),
+        ("2026-12-20", "aggregate_waiver", "repository"),
+    ]
+    assert rows == exception_expiry_report(policy, today)
+
+
+def _near_expiry_aggregate(monkeypatch, tmp_path, *, alpha_pct, repo_pct, today):
+    entry = _covered_entry()
+    artifacts = tmp_path / "artifacts"
+    artifacts.mkdir()
+    _artifact(artifacts, entry)
+    monkeypatch.setattr(
+        "scripts.ci_test_matrix.subprocess.run",
+        _fake_coverage_run({"alpha.json": alpha_pct, "repository-coverage.json": repo_pct}, []),
+    )
+    policy = _expiry_policy(aggregate_expires=None, waiver_expires=date(2026, 12, 12))
+    output = tmp_path / "combined"
+    code = aggregate({"alpha": entry}, policy, artifacts, output, root=tmp_path, today=today)
+    return code, output
+
+
+def test_aggregate_reports_expiry_without_changing_exit_code(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    code, output = _near_expiry_aggregate(
+        monkeypatch, tmp_path, alpha_pct=65.0, repo_pct=76.0, today=date(2026, 12, 1)
+    )
+    assert code == 0
+    captured = capsys.readouterr()
+    assert "WARNING:" in captured.err
+    assert "::warning" not in captured.err
+    summary = json.loads((output / "per-skill-coverage.json").read_text())
+    assert summary["schema_version"] == 1
+    assert summary["exception_expiry"][0]["status"] == "warning"
+    assert "## Exception expiry" in (output / "per-skill-coverage.md").read_text()
+
+
+def test_aggregate_expiry_does_not_mask_floor_failure(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    code, _ = _near_expiry_aggregate(
+        monkeypatch, tmp_path, alpha_pct=10.0, repo_pct=76.0, today=date(2026, 12, 1)
+    )
+    assert code == 1
+    assert "WARNING:" in capsys.readouterr().err
+
+
+def test_aggregate_reports_urgent_expiry_as_urgent(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    _near_expiry_aggregate(
+        monkeypatch, tmp_path, alpha_pct=65.0, repo_pct=76.0, today=date(2026, 12, 8)
+    )
+    assert "URGENT:" in capsys.readouterr().err
+
+
+def test_aggregate_without_expiring_exceptions_is_quiet(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    _near_expiry_aggregate(
+        monkeypatch, tmp_path, alpha_pct=65.0, repo_pct=76.0, today=date(2026, 10, 1)
+    )
+    captured = capsys.readouterr()
+    assert "WARNING:" not in captured.err
+    assert "URGENT:" not in captured.err
+
+
+def test_aggregate_emits_workflow_command_on_github_actions(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    _near_expiry_aggregate(
+        monkeypatch, tmp_path, alpha_pct=65.0, repo_pct=76.0, today=date(2026, 12, 1)
+    )
+    assert "::warning title=Coverage exception expiring::" in capsys.readouterr().err
+
+
+def test_emit_expiry_warnings_escapes_workflow_command_data(monkeypatch, capsys):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    row = {
+        "kind": "coverage_waiver",
+        "id": "50%\nbad\rid",
+        "issue": 1,
+        "expires_on": "2026-12-12",
+        "days_remaining": 4,
+        "status": "urgent",
+    }
+    _emit_expiry_warnings([row], sys.stderr)
+    err = capsys.readouterr().err
+    assert err.count("\n") == 1
+    assert "%25" in err and "%0A" in err and "%0D" in err
+
+
+def _near_expiry_repo(tmp_path) -> None:
+    _script_file(tmp_path, "alpha")
+    _test_file(tmp_path, "skills/alpha/scripts/tests/test_alpha.py")
+    _write_index(tmp_path, {"alpha": {}})
+    payload = _base_policy()
+    payload["coverage"] = {
+        "default_target": 70,
+        "tiers": {},
+        "waivers": {
+            "alpha": {
+                "floor": 50,
+                "target": 70,
+                "expires_on": "2026-12-12",
+                "issue": 293,
+                "reason": "near expiry",
+            }
+        },
+    }
+    _write_policy(tmp_path, payload)
+
+
+def test_matrix_command_warns_on_stderr_and_keeps_stdout_json(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    _near_expiry_repo(tmp_path)
+    monkeypatch.setattr("scripts.ci_test_matrix.ROOT", tmp_path)
+
+    assert main(["matrix"], today=date(2026, 12, 1)) == 0
+    captured = capsys.readouterr()
+    assert "include" in json.loads(captured.out)
+    assert "WARNING:" in captured.err
+    assert "WARNING:" not in captured.out
+
+
+def test_list_command_emits_no_expiry_warning(monkeypatch, tmp_path, capsys):
+    _near_expiry_repo(tmp_path)
+    monkeypatch.setattr("scripts.ci_test_matrix.ROOT", tmp_path)
+
+    assert main(["list"], today=date(2026, 12, 1)) == 0
+    captured = capsys.readouterr()
+    assert captured.out.split() == ["alpha"]
+    assert captured.err == ""
+
+
+def _write_lock(root: Path, *packages: tuple[str, str]) -> None:
+    body = "version = 1\n"
+    for name, version in packages:
+        body += f'\n[[package]]\nname = "{name}"\nversion = "{version}"\n'
+    (root / "uv.lock").write_text(body, encoding="utf-8")
+
+
+def _capture_install_argv(monkeypatch) -> list[list[str]]:
+    calls: list[list[str]] = []
+    monkeypatch.setattr("scripts.ci_test_matrix.shutil.which", lambda _name: None)
+    monkeypatch.setattr(
+        "scripts.ci_test_matrix.subprocess.run",
+        lambda command, check: calls.append(command),
+    )
+    return calls
+
+
+def test_policy_requirements_agree_with_uv_lock():
+    # Issue #525: a specifier duplicated in the policy must never drift from uv.lock.
+    pytest.importorskip("tomllib" if sys.version_info >= (3, 11) else "tomli")
+    from packaging.requirements import Requirement as Req
+
+    from scripts.ci_test_matrix import ROOT as REPO_ROOT
+
+    locked = locked_versions(REPO_ROOT)
+    assert locked, "uv.lock must be readable"
+    entries = build_entries(REPO_ROOT, load_policy(REPO_ROOT, today=TODAY))
+    assert entries["repo-scripts"].requirements == ("pyarrow",)
+    for entry in entries.values():
+        for raw in entry.requirements:
+            requirement = Req(raw)
+            if requirement.marker is not None and not requirement.marker.evaluate():
+                continue
+            versions = locked.get(canonicalize_name(requirement.name))
+            if not requirement.specifier or versions is None:
+                continue
+            assert any(
+                requirement.specifier.contains(version, prereleases=True) for version in versions
+            ), f"{entry.id}: {raw} is not satisfied by uv.lock {sorted(versions)}"
+
+
+@pytest.mark.parametrize("installed", ["25.0.1", "26.0.0"])
+def test_install_check_bare_requirement_follows_any_installed_version(monkeypatch, installed):
+    # Documents the contract: a bare entry accepts whatever version uv.lock installed. The
+    # regression guard that repo-scripts stays bare is the agreement test above.
+    monkeypatch.setattr("scripts.ci_test_matrix.metadata.version", lambda name: installed)
+    entry = TestEntry("repo-scripts", ("tests",), "scripts", requirements=("pyarrow",))
+    install(entry, check=True)
+
+
+def test_install_check_drift_error_names_the_policy_field(monkeypatch):
+    monkeypatch.setattr("scripts.ci_test_matrix.metadata.version", lambda name: "25.0.1")
+    entry = TestEntry("repo-scripts", ("tests",), "scripts", requirements=("pyarrow==23.0.1",))
+    with pytest.raises(MatrixError) as excinfo:
+        install(entry, check=True)
+    message = str(excinfo.value)
+    assert "needs pyarrow==23.0.1" in message
+    assert "config/ci-test-policy.yaml" in message
+    assert "matrix.repo-scripts.requirements" in message
+
+
+def test_install_check_missing_error_names_the_policy_field(monkeypatch):
+    from importlib.metadata import PackageNotFoundError
+
+    def missing(name):
+        raise PackageNotFoundError(name)
+
+    monkeypatch.setattr("scripts.ci_test_matrix.metadata.version", missing)
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("pyarrow",))
+    with pytest.raises(MatrixError, match=r"matrix\.alpha\.requirements"):
+        install(entry, check=True)
+
+
+def test_install_pins_bare_requirements_from_uv_lock(monkeypatch, tmp_path):
+    _write_lock(tmp_path, ("pyarrow", "25.0.1"), ("lxml", "6.0.0"))
+    calls = _capture_install_argv(monkeypatch)
+    entry = TestEntry(
+        "alpha",
+        ("tests",),
+        "scripts",
+        requirements=("pyarrow", "statsmodels>=0.14,<0.15", "lxml"),
+    )
+
+    install(entry, root=tmp_path)
+
+    assert calls == [
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--",
+            "pyarrow==25.0.1",
+            "statsmodels>=0.14,<0.15",
+            "lxml==6.0.0",
+        ]
+    ]
+    assert entry.requirements == ("pyarrow", "statsmodels>=0.14,<0.15", "lxml")
+
+
+def test_install_normalises_names_when_pinning(monkeypatch, tmp_path):
+    _write_lock(tmp_path, ("pandas-market-calendars", "5.2.2"))
+    calls = _capture_install_argv(monkeypatch)
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("Pandas_Market_Calendars",))
+
+    install(entry, root=tmp_path)
+
+    assert calls[0][-1] == "Pandas_Market_Calendars==5.2.2"
+
+
+@pytest.mark.parametrize(
+    "requirement",
+    [
+        "pyarrow>=1",
+        'pyarrow; python_version >= "3"',
+        "pyarrow[extra]",
+        "pyarrow @ https://example.com/pyarrow.whl",
+        "unlocked-package",
+    ],
+)
+def test_install_passes_through_non_bare_or_unlocked_requirements(
+    monkeypatch, tmp_path, requirement
+):
+    _write_lock(tmp_path, ("pyarrow", "25.0.1"))
+    calls = _capture_install_argv(monkeypatch)
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=(requirement,))
+
+    install(entry, root=tmp_path)
+
+    assert calls[0][-1] == requirement
+
+
+def test_install_leaves_forked_package_bare(monkeypatch, tmp_path):
+    _write_lock(tmp_path, ("pyarrow", "25.0.1"), ("pyarrow", "24.0.0"))
+    calls = _capture_install_argv(monkeypatch)
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("pyarrow",))
+
+    install(entry, root=tmp_path)
+
+    assert calls[0][-1] == "pyarrow"
+
+
+def test_install_without_usable_lock_stays_bare_and_warns_only_on_unparseable(
+    monkeypatch, tmp_path, capsys
+):
+    calls = _capture_install_argv(monkeypatch)
+    entry = TestEntry("alpha", ("tests",), "scripts", requirements=("pyarrow",))
+
+    install(entry, root=tmp_path)
+    assert calls[-1][-1] == "pyarrow"
+    assert capsys.readouterr().err == ""
+
+    (tmp_path / "uv.lock").write_text("not [valid toml", encoding="utf-8")
+    install(entry, root=tmp_path)
+    assert calls[-1][-1] == "pyarrow"
+    assert "uv.lock" in capsys.readouterr().err
+
+
+def test_locked_versions_collects_every_version_of_a_duplicated_package(tmp_path):
+    _write_lock(tmp_path, ("PyArrow", "25.0.1"), ("pyarrow", "24.0.0"), ("lxml", "6.0.0"))
+
+    assert locked_versions(tmp_path) == {"pyarrow": {"25.0.1", "24.0.0"}, "lxml": {"6.0.0"}}
+
+
+def test_locked_versions_never_raises(tmp_path):
+    assert locked_versions(tmp_path) == {}
+    (tmp_path / "uv.lock").write_text("not [valid toml", encoding="utf-8")
+    assert locked_versions(tmp_path) == {}
+
+
+@pytest.mark.parametrize(
+    ("days", "expected"),
+    [(0, "expires today"), (1, "1 day remaining"), (2, "2 days remaining")],
+)
+@pytest.mark.parametrize("on_github", [False, True])
+def test_expiry_warning_remaining_days(monkeypatch, capsys, days, expected, on_github):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true" if on_github else "false")
+    today = date(2026, 12, 1)
+    policy = _expiry_policy(
+        aggregate_expires=None, waiver_expires=date.fromordinal(today.toordinal() + days)
+    )
+    _emit_expiry_warnings(exception_expiry_report(policy, today), sys.stderr)
+    warning = capsys.readouterr().err
+    assert f"({expected})" in warning
+    assert "0 days remaining" not in warning
+    assert "1 days remaining" not in warning

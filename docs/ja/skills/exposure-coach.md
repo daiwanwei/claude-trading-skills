@@ -115,3 +115,19 @@ Exposure Coach は個別銘柄の買い推奨ではありません。市場環�
 - theme detector の JSON が認識されない場合、テーマ要因を手動で exposure ceiling に混ぜないでください。
 - 入力が少ないときは、結論より confidence と missing input を重視してください。
 - 実際の発注前には `technical-analyst` と `position-sizer` で個別確認します。
+
+## market-regime-daily の出所検証
+
+必須2生成処理に同じ一意の `--run-id daily-20261017-unique` を渡します。
+省略時は各処理が個別IDを生成します。JSONの `data_provenance` は主時系列の
+実データ日付、UTC取得日時、出所、実行IDを記録します。不明な品質フラグはfalseです。
+補助サマリーの日付は未検証であり、合成スコア全体の鮮度保証にはなりません。
+主時系列の日付が欠落・不正な場合はレポート生成を停止します。
+
+今回表示された正確なJSONパスをExposure Coachに渡し、
+`--require-provenance --run-id daily-20261017-unique --as-of 2026-10-17T13:00:00Z
+--max-age-days 3` を指定します。`--as-of` はタイムゾーン付き評価日時です。
+schema 1.0・実行ID・UTC取得日時・未来日付・鮮度を採点前に検証し、失敗時は出力しません。
+既定3暦日は取引所休日を考慮しない保守的な方針です。成功時は受理した出所と保証範囲を記録します。
+任意のtop-risk等は検証対象外です。実行IDは真正性やpoint-in-timeの証明ではありません。
+厳格モードを使わない従来の入出力形式も引き続き利用できます。

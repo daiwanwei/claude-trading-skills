@@ -165,4 +165,5 @@ confirm first.
 **Scripts:**
 
 - `skills/cot-contrarian-detector/scripts/cot_index.py`
+- `skills/cot-contrarian-detector/scripts/fmp_client.py`
 - `skills/cot-contrarian-detector/scripts/screen_cot_crowding.py`

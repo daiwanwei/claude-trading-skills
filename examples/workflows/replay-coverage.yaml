@@ -1,8 +1,43 @@
 schema_version: 1
 
 covered:
+  core-portfolio-weekly:
+    spec: core-portfolio-weekly/replay.yaml
+    variants:
+      - required-only
+      - full-path
+  kanchi-dividend-weekly:
+    spec: kanchi-dividend-weekly/replay.yaml
+    variants:
+      - required-only
+      - full-path
+  market-regime-daily:
+    spec: market-regime-daily/replay.yaml
+    variants:
+      - required-only
+      - full-path
+  multi-asset-opportunity-daily:
+    spec: multi-asset-opportunity-daily/replay.yaml
+    variants:
+      - required-only
+      - full-path
+  shapiro-contrarian:
+    spec: shapiro-contrarian/replay.yaml
+    variants:
+      - required-only
+      - full-path
+  strategy-research-pipeline:
+    spec: strategy-research-pipeline/replay.yaml
+    variants:
+      - required-only
+      - full-path
   stockbee-20pct-study-daily:
     spec: stockbee-20pct-study-daily/replay.yaml
+    variants:
+      - required-only
+      - full-path
+  stockbee-ep-daily:
+    spec: stockbee-ep-daily/replay.yaml
     variants:
       - required-only
       - full-path
@@ -16,31 +51,17 @@ covered:
     variants:
       - required-only
       - full-path
-
-# Frozen Coverage 3/11 baseline. The validator rejects adding another deferral, so a
-# newly introduced workflow must ship both replay variants.
-deferred:
-  core-portfolio-weekly:
-    issue: 294
-    reason: Existing examples need migration to artifact-store execution.
-  kanchi-dividend-weekly:
-    issue: 294
-    reason: Native and human contract adapters are not implemented yet.
-  market-regime-daily:
-    issue: 294
-    reason: Historical examples need provider-input replay adapters.
   monthly-performance-review:
-    issue: 294
-    reason: Existing examples need transactional journal replay migration.
-  multi-asset-opportunity-daily:
-    issue: 294
-    reason: Provider-backed and manual hypothesis adapters remain deferred.
-  shapiro-contrarian:
-    issue: 294
-    reason: Five decision gates need explicit deterministic evaluators.
-  stockbee-ep-daily:
-    issue: 294
-    reason: Circuit-breaker and EP handoff failure fixtures remain deferred.
+    spec: monthly-performance-review/replay.yaml
+    variants:
+      - required-only
+      - full-path
   swing-opportunity-daily:
-    issue: 294
-    reason: Existing examples need circuit-breaker halt replay migration.
+    spec: swing-opportunity-daily/replay.yaml
+    variants:
+      - required-only
+      - full-path
+
+# Frozen Coverage 12/12 baseline. All canonical workflows ship both replay
+# variants; a newly introduced workflow must do the same.
+deferred: {}

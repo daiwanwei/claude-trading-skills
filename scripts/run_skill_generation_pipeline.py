@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import yaml
@@ -1424,6 +1424,10 @@ def _record_daily_state(
                 "timestamp": datetime.now().isoformat(),
             }
         )
+        if not dry_run and outcome in {"no_ideas", "pr_already_open"}:
+            state.setdefault("last_success_at", {})["daily"] = datetime.now(
+                timezone.utc
+            ).isoformat()
         save_state(project_root, state)
     except Exception:
         logger.warning("Failed to save daily state.", exc_info=True)
@@ -1643,6 +1647,9 @@ def run_daily(project_root: Path, dry_run: bool = False) -> int:
         cleanup_merged_branches(project_root, prefix="skill-generation/")
         rotate_logs(project_root)
 
+        state.setdefault("last_success_at", {})["daily"] = datetime.now(timezone.utc).isoformat()
+        save_state(project_root, state)
+
         logger.info("Daily run complete. PR: %s", pr_url)
         return 0
 
@@ -1722,6 +1729,12 @@ def run_weekly(project_root: Path, dry_run: bool = False) -> int:
         if not score_ok:
             logger.info("Weekly run complete (with scoring failure).")
             return 1
+
+        if not dry_run:
+            state.setdefault("last_success_at", {})["weekly"] = datetime.now(
+                timezone.utc
+            ).isoformat()
+            save_state(project_root, state)
 
         logger.info("Weekly run complete.")
         return 0

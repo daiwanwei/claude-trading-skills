@@ -27,6 +27,26 @@ plain-language reference.
 
 ---
 
+## Preview the Outputs
+
+These illustrated excerpts use fictional data. They show what a recommendation, risk review, and closed-trade review can look like before you install a skill. They are not live data or trading instructions.
+
+Select a preview to open the full-size SVG; on a phone, zoom after opening.
+
+[![Illustrative Navigator recommendation for a 15-minute daily market check and its three required skills]({{ '/assets/previews/navigator-recommendation.svg' | relative_url }})]({{ '/assets/previews/navigator-recommendation.svg' | relative_url }})
+
+**Find a starting path:** [Trading Skills Navigator]({{ '/en/skills/trading-skills-navigator/' | relative_url }}) recommends a workflow from your goal.
+
+[![Illustrative market posture with 36 percent exposure ceiling, REDUCE_ONLY, and LOW confidence because critical inputs are missing]({{ '/assets/previews/market-posture.svg' | relative_url }})]({{ '/assets/previews/market-posture.svg' | relative_url }})
+
+**Review the daily posture:** [Market Regime Daily]({{ '/en/workflows/' | relative_url }}) ends with a human decision gate.
+
+[![Illustrative weekly digest with four fictional closed trades, 50 percent win rate, and 75 dollars realized profit]({{ '/assets/previews/weekly-digest.svg' | relative_url }})]({{ '/assets/previews/weekly-digest.svg' | relative_url }})
+
+**Review completed trades:** [Weekly Performance Digest]({{ '/en/skills/weekly-performance-digest/' | relative_url }}) summarizes outcomes and lessons.
+
+---
+
 ## Prerequisites
 
 > **What this actually costs:** Claude Web Skills are currently available on
@@ -42,7 +62,7 @@ plain-language reference.
 | Item | Required | Description |
 |------|----------|-------------|
 | Claude Account | Yes | Claude Web account with Skills access, or a separately eligible Claude Code account |
-| Python 3.9+ | Yes | Required for helper scripts. Most skills use Python-based data fetching |
+| Python 3.10+ | Yes | Required for the shared repository environment. Standalone packaged skills may retain Python 3.9 support. Most skills use Python-based data fetching |
 | FMP API Key | Optional | Financial Modeling Prep API. Required by screening skills (free tier available) |
 | FINVIZ Elite | Optional | Speeds up dividend screeners 70-80% and improves Theme Detector coverage |
 | Alpaca Account | Optional | Required only for Portfolio Manager skill (free paper trading available) |

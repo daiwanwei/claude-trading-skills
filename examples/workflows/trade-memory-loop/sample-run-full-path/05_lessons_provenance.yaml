@@ -3,7 +3,7 @@ variant: full-path
 decision: research_rule
 source_sha256:
   postmortem_findings: 3272ce966dcbad845619cfbbf53afd3e616286b00d2bf785544862a84e9c7c18  # pragma: allowlist secret
-  backtest_validation: 658776ce0bef21500192ba2d0fe25a872755d303c575158c97488aca7182b0c3  # pragma: allowlist secret
+  backtest_validation: 502773d91525e5a82496edba833ada40138c2e5b85b26f281a425d6146d885cd  # pragma: allowlist secret
 execution_mode: composite
 components:
 - native_api

@@ -66,15 +66,15 @@ permalink: /ja/skills/dividend-growth-pullback-screener/
 
 ```bash
 # RSIフィルター付き2段階スクリーニング（推奨）
-python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth.py --use-finviz
+python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py --use-finviz
 
 # FMPのみのスクリーニング（APIリミットにより最大約40銘柄）
-python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth.py --max-candidates 40
+python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py --max-candidates 40
 
 # カスタムRSI閾値と配当成長要件
-python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth.py \
+python3 dividend-growth-pullback-screener/scripts/screen_dividend_growth_rsi.py \
   --use-finviz \
-  --rsi-threshold 35 \
+  --rsi-max 35 \
   --min-div-growth 15
 ```
 
@@ -148,7 +148,10 @@ python3 screen_dividend_growth_rsi.py --max-candidates 40
 **配当成長プロファイル:**
 - 現在の利回りと年間配当
 - 3年配当CAGRと一貫性
-- 配当性向と持続性評価
+- 配当性向と持続性評価：FCF状態・カバー状況・判定基準・銘柄ごとの説明を出力します。
+- 非REITは利益ベースの配当性向80%未満、かつ報告されたFCFが支払配当を上回る場合のみ持続性を確認します。負・ゼロ・不足・欠損・無効FCFでは確認しません。metricsの代替配当性向は表示専用です。
+- 明示的なREITフラグまたはREIT業種のみ、簡易FFO配当性向80%未満を使用します。不動産セクターだけではREITと判定しません。簡易FFOは純利益と減価償却の両方が必要で、不動産売却損益の調整を含みません。REITのFCF状態は参考情報です。
+- 判定には丸め前の値を使用します。カバー不足は将来の減配を断定するものではありません。
 
 **テクニカルタイミング:**
 - 現在のRSI値（≤40 = オーバーソールド）

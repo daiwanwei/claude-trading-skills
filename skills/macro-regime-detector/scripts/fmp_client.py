@@ -17,10 +17,12 @@ Features:
 """
 
 import os
+import re
 import sys
 import time
-from datetime import date, timedelta
+from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 try:
     import requests
@@ -28,8 +30,40 @@ except ImportError:
     print("ERROR: requests library not found. Install with: pip install requests", file=sys.stderr)
     sys.exit(1)
 
+# Mirror of scripts/provider_contracts.py::redact_url (clients are standalone).
+# Requires a `?`/`&` prefix, so this masks apikey=/api_key= in URL query
+# strings, not a rendered params dict (unreachable today: only
+# RequestException text -- which can embed the full request URL -- is
+# ever printed here, never a bare params repr()).
+_APIKEY_RE = re.compile(r"([?&](?:apikey|api_key)=)[^&\s]+", re.IGNORECASE)
+
+
+def _redact_key(text: str) -> str:
+    """Mask apikey=/api_key= query values so stderr never carries the key."""
+    return _APIKEY_RE.sub(r"\1REDACTED", str(text))
+
 
 # --- FMP endpoint fallback: stable (new users) -> v3 (legacy users) ---
+
+
+def _et_today(now=None):
+    """America/New_York calendar date for provider query windows (issue #427).
+
+    An explicit aware ``now`` wins (deterministic runs/tests); otherwise the
+    current instant is converted to America/New_York. ``now`` must be
+    timezone-aware when supplied. Fail-closed: missing TZ data raises
+    RuntimeError naming the tzdata requirement instead of silently falling
+    back to the runner's local clock.
+    """
+    try:
+        tz = ZoneInfo("America/New_York")
+    except ZoneInfoNotFoundError as exc:
+        raise RuntimeError("America/New_York timezone data is missing; pip install tzdata") from exc
+    if now is not None:
+        if now.tzinfo is None:
+            raise ValueError("now must be timezone-aware")
+        return now.astimezone(tz).date()
+    return datetime.now(tz).date()
 
 
 def _stable_hist_url(base, symbols_str, params):
@@ -40,7 +74,7 @@ def _stable_hist_url(base, symbols_str, params):
     # (trading-day/calendar-day ratio ~252/365 ~0.69, so *2 leaves headroom).
     days = params.pop("timeseries", None)
     if days is not None:
-        today = date.today()
+        today = _et_today()
         params["from"] = (today - timedelta(days=int(days) * 2)).isoformat()
         params["to"] = today.isoformat()
     return base, params
@@ -125,8 +159,30 @@ class FMPClient:
     RATE_LIMIT_DELAY = 0.3  # 300ms between requests
     _ENDPOINT_FAILURE_THRESHOLD = 3
 
+    def _redact_secret(self, text) -> str:
+        """Mask raw and URL-encoded key echoes before diagnostics are truncated."""
+        from urllib.parse import quote, quote_plus
+
+        text = _redact_key(text)
+        if not self.api_key:
+            return text
+        patterns = {re.escape(self.api_key)}
+        for encoded in (quote(self.api_key, safe=""), quote_plus(self.api_key, safe="")):
+            # Percent triplets are case-insensitive; the key's letters are not.
+            parts = re.split(r"(%[0-9A-Fa-f]{2})", encoded)
+            patterns.add(
+                "".join(
+                    "(?i:" + re.escape(part) + ")"
+                    if re.fullmatch(r"%[0-9A-Fa-f]{2}", part)
+                    else re.escape(part)
+                    for part in parts
+                )
+            )
+        # One pass prevents a short key from matching the replacement marker.
+        return re.sub("|".join(sorted(patterns, key=len, reverse=True)), "***REDACTED***", text)
+
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("FMP_API_KEY")
+        self.api_key = (api_key or os.getenv("FMP_API_KEY") or "").strip()
         self.session = requests.Session()
         if self.api_key:
             self.session.headers.update({"apikey": self.api_key})
@@ -177,13 +233,15 @@ class FMPClient:
             else:
                 if not quiet:
                     print(
-                        f"ERROR: API request failed: {response.status_code} - {response.text[:200]}",
+                        self._redact_secret(
+                            f"ERROR: API request failed: {response.status_code} - {self._redact_secret(response.text)[:200]}"
+                        ),
                         file=sys.stderr,
                     )
                 return None
         except requests.exceptions.RequestException as e:
             if not quiet:
-                print(f"ERROR: Request exception: {e}", file=sys.stderr)
+                print(self._redact_secret(f"ERROR: Request exception: {e}"), file=sys.stderr)
             return None
 
     def _request_with_fallback(self, endpoint_key, symbols_str, extra_params=None):
@@ -292,7 +350,7 @@ class FMPClient:
             import yfinance as yf
 
             # Request ~1.5x calendar days to cover weekends/holidays.
-            end = date.today()
+            end = _et_today()
             start = end - timedelta(days=int(days * 1.5))
             df = yf.download(
                 symbol,
@@ -328,7 +386,7 @@ class FMPClient:
             return {"symbol": symbol, "historical": historical[:days]}
         except Exception as e:
             print(
-                f"WARNING: yfinance fallback failed for {symbol}: {e}",
+                self._redact_secret(f"WARNING: yfinance fallback failed for {symbol}: {e}"),
                 file=sys.stderr,
             )
             return None

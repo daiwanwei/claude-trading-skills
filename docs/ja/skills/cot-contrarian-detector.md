@@ -140,3 +140,4 @@ python3 skills/cot-contrarian-detector/scripts/screen_cot_crowding.py --output-d
 
 - `skills/cot-contrarian-detector/scripts/cot_index.py`
 - `skills/cot-contrarian-detector/scripts/screen_cot_crowding.py`
+- `skills/cot-contrarian-detector/scripts/fmp_client.py`

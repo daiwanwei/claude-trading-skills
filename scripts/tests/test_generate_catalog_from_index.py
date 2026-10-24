@@ -11,6 +11,7 @@ import yaml
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import generate_catalog_from_index as catalog_generator  # noqa: E402
 from generate_catalog_from_index import (  # noqa: E402
     SENTINEL_RE,
     SentinelError,
@@ -18,6 +19,8 @@ from generate_catalog_from_index import (  # noqa: E402
     render_api_matrix,
     render_catalog_en,
     render_catalog_ja,
+    render_operational_roles_en,
+    render_operational_roles_ja,
     rewrite_file,
 )
 
@@ -42,6 +45,10 @@ def make_skill(skill_id: str, category: str = "core-portfolio", **overrides) -> 
         ],
         "timeframe": "weekly",
         "difficulty": "intermediate",
+        "operational_role": {
+            "type": "standalone",
+            "rationale": f"{skill_id} is intentionally run on its own.",
+        },
     }
     base.update(overrides)
     return base
@@ -105,6 +112,21 @@ def write_all_targets(project_root: Path) -> None:
     write_readme(project_root, name="README.md", sentinel="catalog-en")
     write_readme(project_root, name="README.ja.md", sentinel="catalog-ja")
     write_claude_md(project_root)
+    for lang, sentinel in (
+        ("en", "operational-roles-en"),
+        ("ja", "operational-roles-ja"),
+    ):
+        path = project_root / "docs" / lang / "skill-catalog.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            f"""# Catalog
+
+<!-- skills-index:start name="{sentinel}" -->
+PLACEHOLDER — will be regenerated.
+<!-- skills-index:end name="{sentinel}" -->
+""",
+            encoding="utf-8",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -122,6 +144,7 @@ def test_render_en_groups_by_category() -> None:
     assert "### Core Portfolio" in out
     assert "`a-skill`" in out
     assert "`b-skill`" in out
+    assert "| Skill | Summary | Integrations | Role | Status |" in out
 
 
 def test_render_ja_uses_japanese_headers() -> None:
@@ -129,6 +152,25 @@ def test_render_ja_uses_japanese_headers() -> None:
     out = render_catalog_ja(skills)
     assert "### 相場環境" in out
     assert "サマリ" in out
+    assert "運用ロール" in out
+
+
+def test_render_operational_role_matrix_surfaces_standalone_rationale() -> None:
+    skills = [
+        make_skill("alpha"),
+        make_skill(
+            "beta",
+            operational_role={"type": "workflow_step"},
+        ),
+    ]
+
+    en = render_operational_roles_en(skills)
+    ja = render_operational_roles_ja(skills)
+
+    assert "`standalone`" in en
+    assert "alpha is intentionally run on its own." in en
+    assert "`workflow_step`" in en
+    assert "alpha is intentionally run on its own." in ja
 
 
 def test_render_skips_empty_categories() -> None:
@@ -401,7 +443,8 @@ def test_sentinel_regex_requires_matching_names() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_main_writes_then_check_passes(tmp_path: Path) -> None:
+def test_main_writes_then_check_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(catalog_generator, "validate_catalogs", lambda _root: None)
     write_minimal_index(tmp_path, [make_skill("a-skill", category="market-regime")])
     write_all_targets(tmp_path)
 
@@ -412,7 +455,8 @@ def test_main_writes_then_check_passes(tmp_path: Path) -> None:
     assert rc == 0
 
 
-def test_main_check_fails_on_drift(tmp_path: Path) -> None:
+def test_main_check_fails_on_drift(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(catalog_generator, "validate_catalogs", lambda _root: None)
     write_minimal_index(tmp_path, [make_skill("a-skill", category="market-regime")])
     write_all_targets(tmp_path)
 
@@ -426,6 +470,40 @@ def test_main_check_fails_on_drift(tmp_path: Path) -> None:
     (tmp_path / "README.md").write_text(tampered, encoding="utf-8")
 
     rc = main(["--project-root", str(tmp_path), "--check"])
+    assert rc == 1
+
+
+def test_main_runs_website_catalog_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_minimal_index(tmp_path, [make_skill("a-skill", category="market-regime")])
+    write_all_targets(tmp_path)
+    validated_roots: list[Path] = []
+    monkeypatch.setattr(
+        catalog_generator,
+        "validate_catalogs",
+        lambda root: validated_roots.append(root),
+    )
+
+    rc = main(["--project-root", str(tmp_path)])
+
+    assert rc == 0
+    assert validated_roots == [tmp_path.resolve()]
+
+
+def test_main_fails_when_website_catalog_validation_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_minimal_index(tmp_path, [make_skill("a-skill", category="market-regime")])
+    write_all_targets(tmp_path)
+
+    def fail_validation(_root: Path) -> None:
+        raise catalog_generator.CatalogError("catalog drift")
+
+    monkeypatch.setattr(catalog_generator, "validate_catalogs", fail_validation)
+
+    rc = main(["--project-root", str(tmp_path)])
+
     assert rc == 1
 
 

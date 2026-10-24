@@ -18,7 +18,7 @@ concrete recommendation: which **workflow** to run, which **skillset**
 (skills-index category) it belongs to, the **API requirement**, and the
 **setup path** for Claude Web App or Claude Code.
 
-A new user faces 72 skills + 11 workflows with no router. This skill is that
+A new user faces 74 skills + 12 workflows with no router. This skill is that
 router. It is **deterministic** — a Python recommender (`scripts/recommend.py`)
 consumes the repo metadata; this SKILL.md narrates the result conversationally.
 
@@ -69,24 +69,50 @@ Parse the JSON and explain, in the user's language:
 
 - **Primary workflow** — `display_name`, `cadence`, `~estimated_minutes`,
   `api_profile`. State plainly what it does and when to run it.
+- **Routing diagnostics** — read `routing_diagnostics.status`. For
+  `ambiguous`, name every `candidate_personas` entry and explain that the
+  ordered first match was selected, except when `no-api-path` is a constraint
+  on another matched goal. For `fallback`, state that no persona
+  matched and ask the user to rephrase; never present the beginner fallback as
+  an exact intent match. `unavailable` means the matched goal is blocked;
+  retain the original persona in the explanation.
+- **Goal availability** — read `goal_match.workflow`, `runnability`, and
+  `missing_requirements` before describing a recommendation. `eligible` means
+  metadata and specified constraints permit that workflow; it does not confirm
+  that data or input files are ready. If `alternative_workflow` is present,
+  label it a **different-goal** on-ramp.
 - **Secondary workflows** — if any, how they relate (e.g. "run the regime
-  check first, then this when it allows risk").
+  check first, then this when it allows risk"). If `dropped_secondary_workflows`
+  is non-empty, say which follow-on workflows were omitted under no-API mode
+  and why; they never make the goal blocked.
 - **Skillset** — the `skillset.id` (skills-index category).
   `manifest_status: active` means a curated `skillsets/<id>.yaml` bundle ships
   for this category (market-regime, core-portfolio, swing-opportunity,
-  trade-memory) — mention it as the install bundle for the recommended
-  workflow. `manifest_status: deferred` means no manifest yet (e.g. honest-gap
-  categories); the recommendation is workflow-based only.
+  trade-memory, strategy-research) — mention it as the install bundle for the
+  recommended workflow. `manifest_status: deferred` means no manifest yet
+  (e.g. honest-gap categories); the recommendation is workflow-based only.
 - **No-API vs API** — read `no_api_path`: `true` → the entire recommended path
   works without paid API keys (state this plainly); `false` → tell the user
-  which paid key(s) the path needs; `null` → honest gap, no path. (`no_api` is
+  which paid key(s) the path needs; `null` → no usable path for the requested goal. (`no_api` is
   the *request* flag — whether no-API mode was active — not whether the path is
   free; always narrate `no_api_path`.) If a workflow was excluded under
   `--no-api`, surface the `rationale` entry naming the paid integration (e.g.
   "swing-opportunity-daily needs FMP").
-- **Honest gap** — if `honest_gap` is true there is **no shipped workflow** for
-  this intent. Say so directly, then present `suggested_skills` from the
-  relevant category and relay the `note`. Never invent a workflow.
+- **Honest gap** — `honest_gap: true` means no usable path for this goal. If
+  `goal_match.runnability` is `unshipped`, no dedicated workflow exists and
+  `suggested_skills` may help. If it is `blocked`, a matching workflow exists
+  but is unavailable: explain each missing requirement. CSV portfolio review
+  is not shipped; offering a CSV as the portfolio source does not make it
+  runnable. Any CSV mention is read as the source unless it is clearly an
+  output (export/save/send; CSVに出力) with no input wording; naming Alpaca
+  alone never clears the gap.
+- **Backtest execution request** — relay the `note` when the research workflow
+  is recommended for a request containing backtest terms. It can evaluate
+  separately measured metrics but does not execute the backtest. Its
+  `no_api_path` does not describe the separate backtest tool or data.
+- **Operational roles** — narrate the `operational_roles` entry for every
+  skill in the setup bundle or honest-gap suggestion. Explain standalone
+  rationale when present; keep enum values unchanged.
 - Always read the `rationale` array and explain *why* this was recommended.
 
 ### Step 4 — Explain the setup path
@@ -119,11 +145,16 @@ The JSON the recommender emits (stable, idempotent, `sort_keys`):
 | `skillset` | `{id, source: skills-index.category, manifest_status, manifest}`. `manifest_status` is `active` when `skillsets/<id>.yaml` ships, else `deferred`. `manifest` is the 5-key view `{display_name, required_skills, recommended_skills, optional_skills, related_workflows}` when active, else `null`. Describes the **primary skillset only** — not the install list |
 | `setup_bundle` | `{required, recommended, optional, sources}` — the actionable install union over the primary skillset **and every secondary workflow** (deterministic, tier-deduped). **This is what to install.** All-empty on an honest gap (use `suggested_skills`) |
 | `suggested_skills` | Skills to use when no workflow shipped (honest gap); else `[]` |
+| `operational_roles` | Skill id → `{type, rationale?}` for every setup-bundle skill, or every `suggested_skills` item on an honest gap |
 | `no_api` | Request-side: was no-API constraint mode active (flag or persona) |
 | `no_api_path` | Path-side: does the **whole** recommendation (primary + every secondary) work without paid API keys? `true`/`false`; `null` on an honest gap. This is the DoD's API-vs-no-API separation — narrate it explicitly |
-| `honest_gap` | `true` when no workflow exists for the intent |
+| `honest_gap` | `true` when no usable workflow can serve the matched goal (`unshipped` or `blocked`) |
+| `goal_match` | Original `{persona, workflow, runnability, missing_requirements}`; `eligible` only means metadata/constraint eligibility |
+| `alternative_workflow` | Separate `{workflow, relationship: different_goal, no_api_path, explanation}` or `null`; never substitutes for the goal |
+| `dropped_secondary_workflows` | `[{id, reason}]` — secondary workflows removed because they need a paid API under `--no-api`; `[]` otherwise. Not a blocker: narrate it so the user knows a follow-on step was omitted |
 | `note` | Plain-language explanation for gaps / unmapped input |
 | `rationale` | Ordered list of why-this-was-recommended strings |
+| `routing_diagnostics` | `{status, selected_persona, candidate_personas, explanation}`. `status` is `exact`, `ambiguous`, `fallback`, or `unavailable`; candidates are all pre-constraint persona matches in deterministic order |
 | `setup_path_ref` | Pointer to the setup-path reference |
 
 ## Resources
@@ -132,8 +163,12 @@ The JSON the recommender emits (stable, idempotent, `sort_keys`):
   truth for routing).
 - `scripts/build_snapshot.py` — regenerates `assets/metadata_snapshot.json`
   from the SSoT; `--check` guards drift (pre-commit + CI).
+- `scripts/intent_benchmark.py` — validates the fail-closed bilingual routing
+  corpus, persona shadowing contracts, and metamorphic invariants.
 - `references/intent_routing.md` — the persona table, the 10-question contract,
   the `--no-api` credential rule, and scoring tie-breaks.
 - `references/setup_paths.md` — Claude Web App vs Claude Code setup steps.
 - `assets/metadata_snapshot.json` — generated SSoT digest for the Web App
   fallback. Never edit by hand; run `build_snapshot.py`.
+- `assets/intent_benchmark_v1.json` — 211 explicitly labeled EN/JA routing
+  cases with 1.0 precision/recall and per-persona/workflow coverage gates.
